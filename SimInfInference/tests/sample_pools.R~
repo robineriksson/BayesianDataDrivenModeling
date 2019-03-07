@@ -1,0 +1,3 @@
+## Robin Eriksson 2018
+library(SimInfInference)
+sample_pools_Rcpp(int S, int I)

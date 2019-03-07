@@ -1,0 +1,7 @@
+## Robin Eriksson 2018
+library(SimInfInference)
+a <- 1:10
+b <- testShuffle(a)
+
+print(a)
+print(b)

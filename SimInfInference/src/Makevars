@@ -1,0 +1,7 @@
+PKG_CXXFLAGS=`${R_HOME}/bin/Rscript -e "Rcpp:::CxxFlags()"`
+
+#CXX_STD = CXX14
+
+PKG_LIBS=`${R_HOME}/bin/Rscript -e "Rcpp:::LdFlags()"`
+
+OBJECTS = RcppExports.o nodeSampler.o nodeInit.o
