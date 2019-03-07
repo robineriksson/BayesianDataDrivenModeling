@@ -1,5 +1,5 @@
 # Bayesian Data-driven epidemiological modeling
-## The (developer) code version
+## The release code version
 
 ### About
 This collection of computational scripts were used for the results in
