@@ -39,19 +39,20 @@ library(ggplot2)
 ##' @param rankP detect on prevalence or phi
 ##' @param toSave save the output plot
 ##' @param PosteriorFilePath the directory that holds the posterior
-main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath) {
+##' @param dataDir path to data directory
+main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
     set.seed(0)
 
     ## perform node network check here so that we get the same random
     ## nodes each time.
-    networkNodes <- networkEval(M)
+    networkNodes <- networkEval(M, dataDir)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## % sample N = 100 parameters
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Draw posterior")
-    theta.post <- drawPosterior(N, PosteriorFilePath)
+    theta.post <- drawPosterior(N, PosteriorFilePath, dataDir)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,7 +61,9 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath) {
     ## phi and/or the highest P = I/(S+I)
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Init run")
-    run <- runSimulation(init = TRUE, N, theta.post, NULL)
+    run <- runSimulation(init = TRUE, N = N, theta.post = theta.post,
+                       nodeSelection = NULL, dataDir = dataDir)
+
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,8 +82,8 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath) {
     ## result)
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Re run")
-    reRun <- runSimulation(init = FALSE, N, theta.post, nodeSelection)
-
+    reRun <- runSimulation(init = FALSE, N = N, theta.post = theta.post,
+                           nodeSelection = nodeSelection, dataDir = dataDir)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,9 +120,11 @@ drawPosterior <- function(N, filename) {
 ##' @param init is it the initial run?
 ##' @param N number of simulation/post draws
 ##' @param theta.post sampled posterior parameters
-runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL) {
+##' @param dataDir the path to the directory that holds the data
+runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL, dataDir) {
     ## define tspan vector
-    load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## load model
+    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
+    load(sise_smhi_path) ## load model
     tspan <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     tmeasurment <- seq(round(median(tspan)),tail(tspan,1),15)
@@ -150,7 +155,7 @@ runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL) {
         theta <- setTheta(t)
 
         ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -223,8 +228,10 @@ rankNodes <- function(run, M = 10, rankP = FALSE, na.rm = FALSE) {
 
 ##' Evaluate the network trafic for possible candidates
 ##' @param M number of selected nodes
-networkEval <- function(M = 10) {
-    load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## loads: model
+##' @param dataDir the path to the drectory that holds the data
+networkEval <- function(M = 10, dataDir) {
+    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
+    load(sise_smhi_path) ## loads: model
     events <- model@events
 
 

@@ -11,9 +11,11 @@ library(ggplot2)
 ##' @param CI how many SD to include in the CI
 ##' @param extend how many days to relax the mathc with.
 ##' @param PosteriorFilePath the filepath to the computed posterior.
+##' @param dataDir the path to the directory holding the data
 main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
-                 PosteriorFilePath) {
-    r <- runSimulation(nodes = nodes, N = N, extend = extend, filename = PosteriorFilePath)
+                 PosteriorFilePath, dataDir) {
+    r <- runSimulation(nodes = nodes, N = N, extend = extend,
+                       filename = PosteriorFilePath, dataDir = dataDir)
     prev <- r$prev
     means <- apply(prev, 2, mean)
     sds <- apply(prev, 2, sd)
@@ -35,12 +37,13 @@ main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
 ##' @param nodes the nodes to observe
 ##' @param N number of posterior draws
 ##' @param extend if we look outside of the exact transfer day date.
+##' @param filename path to filename
+##' @param dataDir path to data directory
 runSimulation <- function(nodes = 250, N = 100, extend = NULL,
-                          filename) {
+                          filename, dataDir) {
     set.seed(0)
 
     ## load posterior
-    filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
@@ -54,7 +57,8 @@ runSimulation <- function(nodes = 250, N = 100, extend = NULL,
 
 
     ## define tspan vector
-    load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## load model
+    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
+    load(sise_smhi_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -111,7 +115,7 @@ runSimulation <- function(nodes = 250, N = 100, extend = NULL,
         theta <- setTheta(t)
 
         ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -278,11 +282,12 @@ setsize <- function(result, nodes, tspan.record, prev) {
 ##' @param nodes the nodes to observe
 ##' @param N number of posterior draws
 ##' @param extend if we look outside of the exact transfer day date.
-trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
+##' @param filename path to filename
+##' @param dataDir path to data directory
+trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
     set.seed(0)
 
     ## load posterior
-    filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
@@ -296,7 +301,8 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
 
 
     ## define tspan vector
-    load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## load model
+    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
+    load(sise_smhi_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -336,7 +342,8 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
     ## what nodes to sample?
     nodes.events <- sampleNodes(eventsOI.exit, nodes, extend)
     nodes.all <- NULL
-    load("~/Gits/BPD/R/DATA/secret/nObs.RData")
+    nObs_path = paste(dataDir, "nObs.RData", sep ="")
+    load(nObs_path)
     nodes.n126 <- as.numeric(nObs)
 
 
@@ -356,7 +363,7 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
         theta <- setTheta(t)
 
         ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,

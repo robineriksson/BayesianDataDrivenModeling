@@ -11,9 +11,10 @@ library(ggplot2)
 ##' @param N the number of posterior samples
 ##' @param savePlot save the output plot
 ##' @param PosteriorFilePath filepath to the posterior.
+##' @param dataDir path to data directory
 ##' @return list with dataframe and plot handle
-main <- function(N, PosteriorFilePath) {
-    res <- runSimulator(N, PosteriorFilePath)
+main <- function(N, PosteriorFilePath, dataDir) {
+    res <- runSimulator(N, PosteriorFilePath, dataDir)
     ## create more informative names for each intervention
     oldnames <- names(res)
     newnames <- numeric(length(oldnames))
@@ -114,8 +115,10 @@ statTest <- function(prev, logit = TRUE, B = 1000) {
 ##' run N simulations with N drawn posterior parameter samples.
 ##'
 ##' @param N number of simulations
+##' @param filename the directory that holds the posterior
+##' @param dataDir path to data directory
 ##' @return result
-runSimulator <- function(N, filename) {
+runSimulator <- function(N, filename, dataDir) {
     set.seed(0)
 
     ## load posterior
@@ -132,7 +135,8 @@ runSimulator <- function(N, filename) {
 
 
     ## define tspan vector
-    load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## load model
+    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
+    load(sise_smhi_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Pre run until intervetion day
@@ -163,7 +167,7 @@ runSimulator <- function(N, filename) {
         theta <- setTheta(t)
 
         ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -219,7 +223,7 @@ runSimulator <- function(N, filename) {
         theta <- setTheta(t)
 
         ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -258,7 +262,7 @@ runSimulator <- function(N, filename) {
         theta <- setTheta(t)
 
          ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -289,7 +293,7 @@ runSimulator <- function(N, filename) {
         theta <- setTheta(t)
 
          ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -328,7 +332,7 @@ runSimulator <- function(N, filename) {
         theta <- setTheta(t)
 
          ## reload model
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda")
+        load(sise_smhi_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
