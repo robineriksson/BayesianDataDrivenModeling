@@ -2,7 +2,6 @@ library(SimInfInference)
 library(SimInf)
 library(ggplot2)
 
-library(parallel)
 ## % *** intro here, look back to the 1st paragraph of the abstract
 ## % (``public security'')
 
@@ -34,7 +33,13 @@ library(parallel)
 ## % length about eps.
 
 
-main <- function(N = 100, M = 50, rankP = FALSE, toSave = TRUE) {
+##' Run the detection experient found in the paper
+##' @param N the number of posterior samples
+##' @param M the number of top nodes to pick
+##' @param rankP detect on prevalence or phi
+##' @param toSave save the output plot
+##' @param PosteriorFilePath the directory that holds the posterior
+main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath) {
     set.seed(0)
 
     ## perform node network check here so that we get the same random
@@ -46,7 +51,7 @@ main <- function(N = 100, M = 50, rankP = FALSE, toSave = TRUE) {
     ## % sample N = 100 parameters
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Draw posterior")
-    theta.post <- drawPosterior(N)
+    theta.post <- drawPosterior(N, PosteriorFilePath)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -87,17 +92,13 @@ main <- function(N = 100, M = 50, rankP = FALSE, toSave = TRUE) {
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     p <- detectionProb(reRun, nodeSelection, rankP = FALSE, na.rm = FALSE)
 
-    if(toSave)
-        saveThePlot(p)
-
     return(list(run = run, nodeSelection = nodeSelection, reRun = reRun, theta = theta.post, plot = p))
 }
 
 ##' Draw parameters from posterior
 ##' @param N number of draws
-drawPosterior <- function(N) {
+drawPosterior <- function(N, filename) {
     ## load posterior
-    filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
@@ -519,26 +520,6 @@ detectionProb <- function(run, nodeSelection, rankP = FALSE, na.rm = FALSE, cutL
               axis.title = element_text(face = "plain",size = rel(1))) +
         guides(color=guide_legend(nrow=1,byrow=TRUE), fill=guide_legend(nrow=1,byrow=TRUE))
 
-
-
-
-
-
-
-
-    ## plot(x=c(0,dim(prob)[2]), y = c(min(apply(prob.mean,2,min)), max(apply(prob.mean,2,max))),
-    ##      xlab = "time", ylab = "probability of detection in node set i", type = "n")
-    ## for(j in 1:dim(prob)[1])
-    ##     lines(prob.mean[j,], col = j)
-
-    ## return(prob)
     return(gp)
-
-}
-
-saveThePlot <- function(thePlot) {
-    dirname <- "~/Gits/BPD/PLOTS/toPublish/real/"
-    ggplot2::ggsave(paste(dirname, "detection.pdf", sep = ""), thePlot,  width = 8.7, height = 4.35, units = "cm")
-    return(0)
 
 }

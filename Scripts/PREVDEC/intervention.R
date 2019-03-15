@@ -5,15 +5,120 @@ library(SimInfInference)
 library(ggplot2)
 
 
+
+##' main function, that employs all subfunctions
+##'
+##' @param N the number of posterior samples
+##' @param savePlot save the output plot
+##' @param PosteriorFilePath filepath to the posterior.
+##' @return list with dataframe and plot handle
+main <- function(N, PosteriorFilePath) {
+    res <- runSimulator(N, PosteriorFilePath)
+    ## create more informative names for each intervention
+    oldnames <- names(res)
+    newnames <- numeric(length(oldnames))
+    for(n in seq_len(length(oldnames))) {
+        if(oldnames[n] == "baseline")
+            newnames[n] <- "No intervention"
+        else if(oldnames[n] == "transrate")
+            newnames[n] <- "10% reduced indirect transmission rate"
+        else if(oldnames[n] == "decayrate")
+            newnames[n] <- "10% increased bacterial decay rate"
+        else if(oldnames[n] == "noInfectTransp")
+            newnames[n] <- "No transmission by transport"
+        else
+            newnames[n] <- oldnames[n]
+    }
+    names(res) <- newnames
+
+    ## create data frame of each N simulations.
+    prev <- lapply(res,prevSimulator)
+
+    ## extract values post 2008
+    prev.2008 <- lapply(prev, post2008)
+
+    ## thin out the data
+    prev.2008t <- lapply(prev.2008, postThin)
+
+    ## create a ribbon, mean & sd
+    ribbon <- do.call("rbind", lapply(prev.2008t, postRibbon))
+    ## drop rownames
+    rownames(ribbon) <- c()
+
+    ## add "factor name"
+    resnames <- names(res)
+    internames <- numeric(length(resnames))
+    for(i in seq_len(length(resnames))) {
+        internames[i] <- paste(i,") ", resnames[i], sep = "")
+    }
+    ribbon$name <- rep(internames, each = dim(ribbon)[1]/length(resnames))
+    p <- plotSimulator(ribbon)
+
+    return(list(fulldata = prev, ribbon = ribbon, p = p))
+}
+
+##' Perform the statistical test.
+##' Are there any difference in the prevention methods?
+##'
+##' @param prev the full data produced by the main function
+##' @param ribbon the ribbon produced by the main function.
+statTest <- function(prev, logit = TRUE, B = 1000) {
+    ## in order not to recompute every time
+    ncols <- length(prev)
+
+    ## prepare the data
+    prev.2008 <- lapply(prev, post2008)
+    prev.2008t <- lapply(prev.2008, postThin)
+    data <- do.call("rbind",prev.2008t)
+
+    ## get max time
+    mtime <- max(data$time)
+
+    ## extract the max time data
+    maxdata <- t(data[which(data$time == mtime),])
+    maxdata <- matrix(as.numeric(maxdata[-1,]), ncol = ncols)
+
+    ## logit?
+    if(logit) {
+        maxdata <- log(maxdata)
+    }
+
+    ## Do we have normality?
+    swVal <- c()
+
+    ## plot histograms with fitted normal curve
+    par(mfrow = c(ceiling(ncols/2),2))
+    for(i in seq_len(ncols)) {
+        if(B > 0) {
+            ## non parametric bootstrap
+            xx <- sample(maxdata[,i], size = B, replace = T)
+        } else
+            xx <-  maxdata[,i]
+
+        swVal <- c(swVal,shapiro.test(xx)$p.value)
+
+        hist(xx, freq = F)
+        ## think they are in the same order.
+        curve(dnorm(x, mean = mean(xx), sd = sd(xx)), col = 1+i, add =T)
+    }
+
+    ## perform normality test
+    #swVal <- apply(maxdata, 2, function(x){shapiro.test(x)$p.value})
+
+    alpha <- 0.05
+    swTest <- swVal > alpha
+    return(swTest)
+}
+
+
 ##' run N simulations with N drawn posterior parameter samples.
 ##'
 ##' @param N number of simulations
 ##' @return result
-runSimulator <- function(N) {
+runSimulator <- function(N, filename) {
     set.seed(0)
 
     ## load posterior
-    filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
@@ -404,113 +509,7 @@ plotSimulator <- function(df, publish = FALSE, numSD = 2) {
     return(gp)
 }
 
-##' main function, that employs all subfunctions
-##'
-##' @param N the number of posterior samples
-##' @return list with dataframe and plot handle
-main <- function(N, savePlot = FALSE) {
-    res <- runSimulator(N)
-    ## create more informative names for each intervention
-    oldnames <- names(res)
-    newnames <- numeric(length(oldnames))
-    for(n in seq_len(length(oldnames))) {
-        if(oldnames[n] == "baseline")
-            newnames[n] <- "No intervention"
-        else if(oldnames[n] == "transrate")
-            newnames[n] <- "10% reduced indirect transmission rate"
-        else if(oldnames[n] == "decayrate")
-            newnames[n] <- "10% increased bacterial decay rate"
-        else if(oldnames[n] == "noInfectTransp")
-            newnames[n] <- "No transmission by transport"
-        else
-            newnames[n] <- oldnames[n]
-    }
-    names(res) <- newnames
 
-    ## create data frame of each N simulations.
-    prev <- lapply(res,prevSimulator)
-
-    ## extract values post 2008
-    prev.2008 <- lapply(prev, post2008)
-
-    ## thin out the data
-    prev.2008t <- lapply(prev.2008, postThin)
-
-    ## create a ribbon, mean & sd
-    ribbon <- do.call("rbind", lapply(prev.2008t, postRibbon))
-    ## drop rownames
-    rownames(ribbon) <- c()
-
-    ## add "factor name"
-    resnames <- names(res)
-    internames <- numeric(length(resnames))
-    for(i in seq_len(length(resnames))) {
-        internames[i] <- paste(i,") ", resnames[i], sep = "")
-    }
-    ribbon$name <- rep(internames, each = dim(ribbon)[1]/length(resnames))
-    p <- plotSimulator(ribbon)
-
-    if(savePlot){
-        dirname <- "~/Gits/BPD/PLOTS/toPublish/real/"
-        ggplot2::ggsave(paste(dirname, "intervention.pdf", sep = ""), p,  width = 8.7, height = 4.3, units = "cm")
-    } else {
-        p
-    }
-    return(list(fulldata = prev, ribbon = ribbon, p = p))
-}
-
-##' Perform the statistical test.
-##' Are there any difference in the prevention methods?
-##'
-##' @param prev the full data produced by the main function
-##' @param ribbon the ribbon produced by the main function.
-statTest <- function(prev, logit = TRUE, B = 1000) {
-    ## in order not to recompute every time
-    ncols <- length(prev)
-
-    ## prepare the data
-    prev.2008 <- lapply(prev, post2008)
-    prev.2008t <- lapply(prev.2008, postThin)
-    data <- do.call("rbind",prev.2008t)
-
-    ## get max time
-    mtime <- max(data$time)
-
-    ## extract the max time data
-    maxdata <- t(data[which(data$time == mtime),])
-    maxdata <- matrix(as.numeric(maxdata[-1,]), ncol = ncols)
-
-    ## logit?
-    if(logit) {
-        maxdata <- log(maxdata)
-    }
-
-    ## Do we have normality?
-    swVal <- c()
-
-    ## plot histograms with fitted normal curve
-    par(mfrow = c(ceiling(ncols/2),2))
-    for(i in seq_len(ncols)) {
-        if(B > 0) {
-            ## non parametric bootstrap
-            xx <- sample(maxdata[,i], size = B, replace = T)
-        } else
-            xx <-  maxdata[,i]
-
-        swVal <- c(swVal,shapiro.test(xx)$p.value)
-
-        hist(xx, freq = F)
-        ## think they are in the same order.
-        curve(dnorm(x, mean = mean(xx), sd = sd(xx)), col = 1+i, add =T)
-    }
-
-    ## perform normality test
-    #swVal <- apply(maxdata, 2, function(x){shapiro.test(x)$p.value})
-
-    alpha <- 0.05
-    swTest <- swVal > alpha
-    return(swTest)
-}
 
 
 ##' Perform the statistical test.
@@ -587,75 +586,6 @@ intCompare <- function(mainoutput) {
         scale_color_manual(values = c("#00B283","#FF3B00")) +
     guides(color=ggplot2::guide_legend(title.vjust = -1, title = NULL, label.vjust = 2, key.vjust = 2))
 
-
-
-
-
-
-
-
     return(list(p = p, sumData = sumData))
 
 }
-
-
-plotInterNreduct <- function(mainout) {
-    p1 <- plotSimulator(mainout$ribbon, publish = TRUE) +
-        ggplot2::theme(plot.margin=grid::unit(c(1,1,1,1),"mm")) #+    theme(legend.position = "hidden")
-
-    p2 <- intCompare(mainout) + ggplot2::theme(plot.margin=grid::unit(c(1,1,1,1),"mm"))
-
-    p <- gridExtra::grid.arrange(p1,p2, ncol = 2, nrow = 3, layout_matrix = rbind(c(1,1),c(1,1), c(2,3)))
-    #grid_arrange_shared_legend(p, arrangeGrob(p1+nt,p2+nt,p3+nt, ncol=3), ncol=1, nrow=2)
-
-    dirname <- "~/Gits/BPD/PLOTS/toPublish/real/"
-    ggplot2::ggsave(paste(dirname, "interventionWreduct.pdf", sep = ""), p,  width = 8.7, height = 5.8, units = "cm")
-    return(0)
-}
-
-
-
-## shiftTest <- function(){
-##     set.seed(0)
-
-##     ## load posterior
-##     filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
-##     load(filename)
-##     posterior.All <- sobs$getPosterior()
-##     dims <- dim(posterior.All)
-##     rows <- seq(1,dims[1],100)
-##     cols <- seq_len(dims[2]-1)
-
-##     posterior.thinned <- posterior.All[rows,cols]
-
-##     theta.m <- posterior.thinned[sample(seq_len(length(rows)), 1, replace = T),]
-##     theta <- as.numeric(theta.m)
-##     names(theta) <- names(theta.m)
-##     theta <- setTheta(theta)
-
-##     load("~/Gits/BPD/R/DATA/secret/SISe.rda") ## load model
-
-##     events <- model@events
-##     nmat <- matrix(c(0,-1),nrow=2)
-##     mode(nmat) <- "integer"
-##     rownames(nmat) <- c("S","I")
-##     colnames(nmat) <- c("1")
-##     events@N <- nmat
-
-##     events@shift <- as.integer(events@shift + 1)
-
-
-##     tspan <- seq(model@tspan[1],model@tspan[1]+2,1)
-
-##     model <- init_model_widgren(model = model, theta = theta,
-##                                 tspan = tspan,
-##                                 phi = "local")
-
-##     model@events <- events
-
-##     res <- SimInf::run(model)
-
-##     u <- SimInf::trajectory(res,c("S","I"),node=c(101,25944))
-
-##     return(u)
-## }

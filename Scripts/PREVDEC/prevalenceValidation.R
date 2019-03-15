@@ -2,38 +2,18 @@ library(SimInf)
 library(SimInfInference)
 library(ggplot2)
 
-cleanData <- function(predata) {
-    ## collaps data,such that 1 measurement per node
-    ## logical sum, i.e, true + false = true.
-    nu <- unique(predata$row_U_S)
-    predata.agg <- data.frame(status = rep(NA, length(nu)), node = nu)
-    for(i in seq_len(length(nu))) {
-        n <- nu[i]
-        predata.agg[i,]$status <- as.logical(sum(predata[which(predata$row_U_S == n),]$status))
-    }
-    #predata.agg$node <- floor(predata.agg$node/2)
-
-    return(predata.agg)
-}
-
-plotit <- function(res, size = 14) {
-
-    df <- res$r$prev
-    df.r <- data.frame(prevalence = unlist(c(df)))
-    df.r$period <- rep(colnames(df), each = dim(df)[1])
-
-    p <- ggplot(df.r, aes(prevalence, fill = period)) +
-        geom_density(alpha = 0.7) +
-        scale_x_continuous(labels = scales::percent,
-                           breaks = seq(0.015, 0.05, 0.0075)) +
-        theme_Publication(size)
-
-    return(p)
-}
-
-
-main <- function(N = 10, nodes = 250, CI = 2, extend = 1) {
-    r <- runSimulation(nodes = nodes, N = N, extend = extend)
+##' Run the simulation study
+##' return table with the population prevalence
+##' includes Credible interval.
+##'
+##' @param N number of posterior samples
+##' @param nodes the number of nodes looked at.
+##' @param CI how many SD to include in the CI
+##' @param extend how many days to relax the mathc with.
+##' @param PosteriorFilePath the filepath to the computed posterior.
+main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
+                 PosteriorFilePath) {
+    r <- runSimulation(nodes = nodes, N = N, extend = extend, filename = PosteriorFilePath)
     prev <- r$prev
     means <- apply(prev, 2, mean)
     sds <- apply(prev, 2, sd)
@@ -49,10 +29,14 @@ main <- function(N = 10, nodes = 250, CI = 2, extend = 1) {
 }
 
 
-##' Run the model and save prevalence for the nodes in input
+##' Compute the population prevalence for the number of nodes in input.
+##' Looks at two different intervals, mentioned in the paper.
+##'
 ##' @param nodes the nodes to observe
 ##' @param N number of posterior draws
-runSimulation <- function(nodes = 250, N = 100, extend = NULL) {
+##' @param extend if we look outside of the exact transfer day date.
+runSimulation <- function(nodes = 250, N = 100, extend = NULL,
+                          filename) {
     set.seed(0)
 
     ## load posterior
@@ -252,6 +236,7 @@ numberOfInfNodes <- function(nodeData, time) {
     det.mean <- mean(detected)
     return(det.mean)
 }
+
 evalSwab <- function(nodeData) {
     years <- unique(nodeData$year)
     evaled <- c()
@@ -272,9 +257,27 @@ evalSwab <- function(nodeData) {
 }
 
 
-##' Run the model and save prevalence for the nodes in input
+setsize <- function(result, nodes, tspan.record, prev) {
+    u <- SimInf::trajectory(result, c("S","I"),as.is=T, node = nodes)
+    u.sel <- u[, as.character(tspan.record)]
+    ## from S and I to Sigma = S+I
+    i1 <- seq(1,dim(u.sel)[1],2)
+    u.size <- u.sel[i1,] + u.sel[i1+1,]
+    nodenames <- unique(nodes)
+    rownames(u.size) <- nodenames
+
+    ## paste to the prevalence dataframe
+    prev$size.median <- apply(u.size, 2, median)
+    prev$size.mean <- apply(u.size, 2, mean)
+
+    return(prev)
+}
+
+##' Node prevalence for interval 2008-2009
+##'
 ##' @param nodes the nodes to observe
 ##' @param N number of posterior draws
+##' @param extend if we look outside of the exact transfer day date.
 trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
     set.seed(0)
 
@@ -404,18 +407,17 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL) {
     return(prev)
 }
 
-setsize <- function(result, nodes, tspan.record, prev) {
-    u <- SimInf::trajectory(result, c("S","I"),as.is=T, node = nodes)
-    u.sel <- u[, as.character(tspan.record)]
-    ## from S and I to Sigma = S+I
-    i1 <- seq(1,dim(u.sel)[1],2)
-    u.size <- u.sel[i1,] + u.sel[i1+1,]
-    nodenames <- unique(nodes)
-    rownames(u.size) <- nodenames
+plotit <- function(res, size = 14) {
 
-    ## paste to the prevalence dataframe
-    prev$size.median <- apply(u.size, 2, median)
-    prev$size.mean <- apply(u.size, 2, mean)
+    df <- res$r$prev
+    df.r <- data.frame(prevalence = unlist(c(df)))
+    df.r$period <- rep(colnames(df), each = dim(df)[1])
 
-    return(prev)
+    p <- ggplot(df.r, aes(prevalence, fill = period)) +
+        geom_density(alpha = 0.7) +
+        scale_x_continuous(labels = scales::percent,
+                           breaks = seq(0.015, 0.05, 0.0075)) +
+        theme_Publication(size)
+
+    return(p)
 }
