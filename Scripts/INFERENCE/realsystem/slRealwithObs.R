@@ -1,131 +1,25 @@
 library(SimInfInference)
 
-nightNodeRun <- function(N = 1e3, seed = NULL) {
-    if(is.null(seed))
-        seed <- sample(1:100,1)
-
-    ##    upsilon    beta_t1    beta_t2    beta_t3      gamma       prev
-    ##    0.01748061 0.15210166 0.13849330 0.14714038 0.10302909 0.01928063
-    thetaTrue <- c(upsilon = 0.01748061,
-                   beta_t1 = 0.15210166,
-                   beta_t2 = 0.13849330,
-                   beta_t3 = 0.14714038,
-                   gamma = 0.10302909,
-                   prev = 0.01928063)
-    nSim <- 20
-
-    Sw <- 1e-3
-    bs <- TRUE
-
-
-    dirname <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/batchRun/sobs/"
-    filename <- paste(dirname, "obs_seed_",seed,".RData", sep = "")
-    print(filename)
-
-    sobs <- SLAMInference(nStop = N, nSim = nSim, Sw = Sw, bs = bs, seed = seed)
-    save(sobs,file=filename)
-
-
-
-}
-
-contNightNodeRun <- function(N = 5e2, seed) {
-    dirname <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/batchRun/sobs/"
-    filename <- paste(dirname, "obs_seed_",seed,".RData", sep = "")
-    print(filename)
-    load(filename)
-    sobs <- contInference(sobs, N)
-    save(sobs,file=filename)
-}
-
-weekend <- function(N = 1e3, nSim = 20, normalize = TRUE, Sw = 1e-3, bs = TRUE, useW = TRUE ){
-    if(N > 0) {
-        sobs <- SLAMInference(nStop = N, nSim = nSim, normalize = normalize, Sw = Sw, bs = bs)
-        filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
-        save(sobs, file = filename)
-    }
-}
-
-
-night <- function(N = 1e3){
-    if(N > 0){
-        filename <- "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/sobs.RData"
-        load(filename)
-        sobs <- contInference(sobs, N)
-        save(sobs, file = filename)
-    }
-}
-
-
-franken <- function(odd = FALSE, burnIn = 750) {
-    dirname = "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/batchRun/sobs/"
-    if(odd)
-        seeds <- c(2:6,8:9)
-        #seeds <- c(3:11)
-    else
-        seeds <- c(2:10)
-
-    filename0 <- paste(dirname, "obs_seed_1.RData", sep = "")
-    load(filename0)
-    dAll <- sobs$getPosterior()
-
-    ## remove burnin
-    dims <- dim(dAll)
-    burnin <- burnIn:dims[1]
-
-    dAll <- dAll[burnin,]
-    for (s in seeds) {
-        filename <- paste(dirname, "obs_seed_", s, ".RData", sep = "")
-        load(filename)
-        d <- sobs$getPosterior()[burnin,]
-        dAll <- rbind(dAll, d)
-    }
-
-    return(dAll)
-}
-
-changePosterior <- function(infe, post){
-    dims <- dim(post)
-    post <- as.matrix(post)
-
-    ## alter xbar
-    xbar <- apply(post[,1:(dims[2]-1)], 2, mean)
-
-    ## alter sigma
-    cov.est <- function(X){
-        d <- dim(X)
-        if(is.null(d)){
-            k <- length(X)
-            xbar <- 1/(k+1) * sum(X)
-            cov.est <- 1/k * (sum( X^2) - (k+1)*xbar^2)
-        } else {
-            k <- d[1]
-            xbar <- 1/(k+1) * apply(X,2,sum)
-            s <- t(X) %*% X - ((k+1)*xbar %*% t(xbar))
-            cov.est <- s/k
-        }
-        return(cov.est)
-    }
-
-    C <- cov.est(post[,1:(dims[2]-1)])
-    S <- infe$getExtraArgsEstimator()$S
-    e <- infe$getExtraArgsEstimator()$e
-
-    sigma <- S * C + S*e*diag(dims[2]-1)
-
-    ## set the new parameters
-    infe$changeExtraArgsEstimator(accVec = post, xbar = xbar, sigma = sigma, nStop = 1, reinit = TRUE)
-    infe$runEstimation()
-
-    return(infe)
-}
-
-
-##' Performes SL MCMC on the SISe3 dataset
+##' Performes SLAM on the SISe dataset with real observations
+##'
 ##' @param nStop number of accepted parameter proposals
 ##' @param nSim number of simulations for each evaluation
-##' @param plotres true if result is plotted
-SLAMInference <- function(nStop = 100, nSim = 20,
+##' @param debug if we want debug messages from the estimator
+##' @param solver the stochastic solver to use in SimInf
+##' @param binary if the data is binary filtered
+##' @param S SLAM parameter 1
+##' @param e SLAM parameter 2
+##' @param normalize if the SS should be normalized to observation
+##' @param pertubate if to pertubate the initial guess or not.
+##' @param thetaTrue The truth used for the generation of the obs.
+##' @param threads the number of threads to use in SimInf
+##' @param bs if bootstrapped is to be used
+##' @param obsSeed the seed used for the observation
+##' @param seed the seed used for the param. estimation
+##' @param logParam observe the log-param space?
+##' @param useW use weighted Summary Statistics
+##' @param useSMHI use SMHI based seasons.
+SLAMInference <- function(nStop = 1e3, nSim = 20,
                           debug = FALSE, solver = "ssm",
                           Sw = NULL,
                           S = 1e-3, e = NULL,
@@ -150,13 +44,6 @@ SLAMInference <- function(nStop = 100, nSim = 20,
     set.seed(seed) ## set up simulator
 
     load("~/Gits/BPD/R/DATA/secret/obsCleanDates.RData") ## loads: observation.dates
-    ##' TODO: rewrite to instead use:
-    ## load("~/Gits/BPD/R/DATA/observation_aggregates.RData") # loads: data, aggregated observation.dates
-    ## load("~/Gits/BPD/R/DATA/tinObs.RData") # load: tinObs, unique times at which we observe nodes.
-    ## load("~/Gits/BPD/R/DATA/nodeTime.RData") # load: nodeTime, node and sample time.
-
-
-
 
     ## We only to run the simulation for the maximum time that we have observations for.
     ## But we should start at the same time as the movements as they will affect
@@ -175,10 +62,6 @@ SLAMInference <- function(nStop = 100, nSim = 20,
 
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
-    ## load d (distance between the observed nodes)
-    ## load("~/Gits/BPD/R/DATA/secret/d.RData")
-    ## nObs <- colnames(d)
-
     ## load names of the observed nodes -> nObs
     load("~/Gits/BPD/R/DATA/secret/nObs.RData") ## load: nObs
 
@@ -186,17 +69,6 @@ SLAMInference <- function(nStop = 100, nSim = 20,
     ## The Simulator.
     Simulator <- SimInfSimulator_real
 
-    ##for parallell sampling
-    ## cNum <- parallel::detectCores()
-    ## cl <- parallel::makeCluster(getOption("cl.cores", cNum))
-    ## parallel::clusterExport(cl=cl,
-    ##                         varlist=c("sample_herd",
-    ##                                   "predict_env_sample_SISe",
-    ##                                   "pool_prevalence",
-    ##                                   "sample_pools"))
-    ## cl <- NULL
-
-    ## load data that is included the SimInf package
     events <- NULL
     u0 <- NULL
 
@@ -282,35 +154,9 @@ contInference <- function(infe, nStop = 100){
 
     infe$changeExtraArgsEstimator(nStop = nStop, accVec = accVec, reinit = TRUE)
 
-    ## if(infe$getExtraArgsSimulator()$binary){
-    ##     ##for parallell sampling
-    ##     cNum <- parallel::detectCores()
-    ##     cl <- parallel::makeCluster(getOption("cl.cores", cNum))
-    ##     parallel::clusterExport(cl=cl,
-    ##                             varlist=c("sample_herd",
-    ##                                       "predict_env_sample_SISe",
-    ##                                       "pool_prevalence",
-    ##                                       "sample_pools"))
-    ##     infe$changeExtraArgsSimulator(cl = cl)
-    ## }
-
     infe$runEstimation()
 
     return(infe)
 }
 
-reinitCluster <- function(infe){
-    ##for parallell sampling
-    cNum <- parallel::detectCores()
-    cl <- parallel::makeCluster(getOption("cl.cores", cNum))
-    parallel::clusterExport(cl=cl,
-                            varlist=c("sample_herd",
-                                      "predict_env_sample_SISe",
-                                      "pool_prevalence",
-                                      "sample_pools"))
 
-    infe$changeExtraArgsSimulator(cl = cl)
-    infe$changeExtraArgsSummaryStatistics(cl = cl)
-
-    return(infe)
-}

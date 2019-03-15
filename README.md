@@ -25,6 +25,7 @@ The catalog structure follows,
     - INFERENCE
       - 1600system
       - realsystem
+      - plotNtable
     - PREVDEC
   - README.md
   - SimInfInference
@@ -37,8 +38,9 @@ All the scripts used for the computations, using the class from SimInfInference.
 
 * **DATA**, The collection of data used in the paper.
 
-* **INFERENCE**, Divided into two subfolders, the 1600 synthetic data
-  (1600system), and the full dataset (realsystem).
+* **INFERENCE**, Divided into three subfolders, the 1600 synthetic data
+  (1600system), the full dataset (realsystem), and scripts for our plotting and 
+  table construction.
 
 * **PREVDEC**, The experiments that use the posterior generated from
   INFERENCE in the frame of public health.

@@ -243,20 +243,20 @@ wilkinsonStatistics <- function(vec, w = NULL){
 ##' @export
 computeWeights <- function(data, column){
     ## compute weightes
-    if(column == "I") {
+    #if(column == "I") {
         ## If we track #I we would have to write down the weights earlier. This
         ## alternative method gives us a hinge on how the should be.
         w <- apply(data, 1, function(x){length(x) - length(which(is.na(x)))})
-    } else {
-        w <- apply(data, 1, function(x){
-            tab <- table(x)
-            sums <- 0
-            if("0" %in% names(tab))
-                sums <- tab[["0"]]
-            sums <- sums + sum(x, na.rm = TRUE)
-            return(sums)
-        })
-    }
+    #} else {
+    #    w <- apply(data, 1, function(x){
+    #        tab <- table(x)
+    #        sums <- 0
+    #        if("0" %in% names(tab))
+    #            sums <- tab[["0"]]
+    #        sums <- sums + sum(x, na.rm = TRUE)
+    #        return(sums)
+    #    })
+    #}
 
     ## normalize the weights
     w <- w/sum(w)

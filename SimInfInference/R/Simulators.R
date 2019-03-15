@@ -56,29 +56,6 @@ SimInfSimulator_sandbox <- function(theta, extraArgs){
     ## extra initiation ...
     model <- init_model_widgren(model = model, theta = theta, tspan = tspan, p = prevLevel,
                                 phi = phiLevel)
-    ##model@U_sparse <- U_sparse
-
-    ## run model nSim times and store in a list
-    ## traj <- list()
-    ## for (n in seq_len(nSim)) {
-    ##     res <- SimInf::run(model = model, threads = threads, solver = solver)
-    ##     ## prevalence(res, cases = I ~ S*I)
-    ##     fulltraj <- SimInf::trajectory(model = res, compartments = I~I+S, node = as.numeric(nObs))
-    ##     traj[[n]] <- fulltraj[fulltraj$time %in% tObs,]
-    ## }
-    ##traj <- traj[order(traj$node),]
-
-    ## out <- lapply(traj, function(x){
-    ##     if (binary){
-    ##         ## create a list. 1 element for each node.
-    ##         traj.list <- list()
-    ##         for(i in seq_len(length(nObs)))
-    ##             traj.list[[i]] = x[x$node == nObs[i],]
-    ##         out <- sample_nodes_par(traj.list, cl0 = cl)
-    ##         out <- as.data.frame(out)
-    ##     } else
-    ##         out <- x
-    ## })
 
     ## run model nSim times and store in a list
     tcols <- which(tspan %in% tObs)
@@ -240,39 +217,6 @@ SimInfSimulator_real <- function(theta, extraArgs){
     }
 
     out <- traj
-
-    ## out <- lapply(traj, function(x){
-    ##     if (binary){
-    ##         ## create a list. 1 element for each node.
-    ##         traj.list <- list()
-    ##         for(i in seq_len(length(nObs))){
-    ##             sim <- x[x$node == nObs[i],]
-    ##             obs <- obsDates[obsDates$node == nObs[i],]
-
-    ##             traj.list[[i]] = sim[sim$time %in% obs$numTime,]
-    ##         }
-    ##         out <- sample_nodes_par(traj.list, cl0 = cl)
-    ##         out <- as.data.frame(out)
-    ##     } else
-    ##         out <- x
-    ## })
-
-    ## out <- parallel::parLapply(cl, X = traj, function(X){
-    ##     if (binary){
-    ##         ## create a list. 1 element for each node.
-    ##         traj.list <- list()
-    ##         for(i in seq_len(length(nObs))){
-    ##             sim <- X[X$node == nObs[i],]
-    ##             obs <- obsDates[obsDates$node == nObs[i],]
-
-    ##             traj.list[[i]] = sim[sim$time %in% obs$numTime,]
-    ##         }
-    ##         out <- sample_nodes(traj.list)
-    ##         out <- as.data.frame(out)
-    ##     } else
-    ##         out <- X
-    ## })
-
 
     return(out)
 }
