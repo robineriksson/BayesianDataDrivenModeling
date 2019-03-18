@@ -25,7 +25,6 @@ The catalog structure follows,
     - INFERENCE
       - 1600system
       - realsystem
-      - plotNtable
     - PREVDEC
   - README.md
   - SimInfInference
@@ -38,8 +37,7 @@ All the scripts used for the computations, using the class from SimInfInference.
 * **DATA**, The collection of data used in the paper.
 
 * **INFERENCE**, Divided into three subfolders, the 1600 synthetic data
-  (1600system), the full dataset (realsystem), and scripts for our plotting and
-  table construction.
+  (1600system) and the full dataset (realsystem).
 
 * **PREVDEC**, The experiments that use the posterior generated from
   INFERENCE in the frame of public health.
@@ -56,6 +54,15 @@ R-package. Acts as a wrapper around SimInf.
 
 The code is written in two folders, R and src. Where R hold the R code
 and src the RCPP. RCPP was used for some task for easy speed-up.
+
+## Run the code (Replicate the result)
+The inference for each dataset is perfomed by using the assigned script.
+If one wish to extract the multi-set matrix plots, or tables, one also need
+to save each file. The suggested location is /Scripts/DATA/posterior/.
+
+To further replicate our results, we suggest using a computational cluster, and
+creating multiple (parallel) "Markov chains" and using these together for better
+performance.
 
 ## References
 

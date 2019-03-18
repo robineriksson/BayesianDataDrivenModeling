@@ -9,12 +9,12 @@ generateBootstrap <- function(nStop = 14000, Mboot = 10) {
 	## generate the bootstrap samples
 	boots = list()
 	for (s in 1:Mboot) {
-		infe <- bootSLreal(nStop, seed = s) 
+		infe <- bootSLreal(nStop, seed = s)
 		boots[[length(boots)+1]] <- infe
 	}
-	
+
 	b = estBias(Mboot, 1000, 120)
-	return(b)	
+	return(b)
 }
 
 
@@ -67,15 +67,23 @@ bootSLreal <- function(nStop = 100, nSim = 10,
     set.seed(seed) ## set up simulator
 
 
-    load("~/Gits/BPD/R/DATA/secret/obsCleanDates.RData") ## loads: observation.dates
-    
+    ## filepaths
+    paths["observations"] <- paste(dataDir, "obsCleanDates.RData", sep="")
+    if(useSMHI)
+        paths["model"] <- paste(dataDir, "SISe_smhi.rda", sep="")
+    else
+        paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nobs"] <- paste(dataDir, "nObs.RData", sep="")
+
+
+
+    load(paths["observations"]) ## loads: observation.dates
+
+
     ## We only to run the simulation for the maximum time that we have observations for.
     ## But we should start at the same time as the movements as they will affect
     ## the state of the distribution of induvidials at nodes.
-    if(useSMHI)
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## loads: model
-    else
-        load("~/Gits/BPD/R/DATA/secret/SISe.rda") ## loads: model
+    load(paths["model"]) ## loads: model
 
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
     realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
@@ -92,10 +100,8 @@ bootSLreal <- function(nStop = 100, nSim = 10,
 
 
     ## load d (distance between the observed nodes)
-    load("~/Gits/BPD/R/DATA/secret/d.RData") ## loads: distance matrix d
-    nObs <- colnames(d)
-    ## all nodes
-    ##nodes <- 1:37221
+    load(paths["nobs"]) ## load: nObs
+
 
 
     Simulator <- SimInfSimulator_real
