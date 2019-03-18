@@ -2,7 +2,7 @@ library(SimInfInference)
 
 
 ##' Perform ABC rejection sampling on the 1600 network.
-##' 
+##'
 ##' @param nStop the number of samples
 ##' @param epsilon the proportion of accepted proposals
 ##' @param solver the stochastic solver
@@ -33,11 +33,11 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
 
     if(binary){
         column <- "sample"
-        logical <- TRUE
     } else {
         column <- "I"
-        logical <- FALSE
     }
+
+    logical <- FALSE
     cl <- NULL
 
 
@@ -127,4 +127,3 @@ contInference <- function(infe, nStop = 100){
 
     return(infe)
 }
-

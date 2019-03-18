@@ -1,3 +1,4 @@
+
 library(SimInfInference)
 
 ##' Performes SLAM on the SISe dataset 1600 network
@@ -35,8 +36,7 @@ SLAMInference <- function(nStop = 100, nSim = 25,
         S <- Sw
     if(is.null(e))
         e <- S/100
-    ## S = 2.5e-4 for 3 beta model? e = 0.5
-    ## S = 1e-3 for 2 beta model
+
     set.seed(seed) ## set up simulator
     tspan <- seq(1,4*365, 1)
     tObs <- seq(200,4*365, obsspan)
@@ -45,14 +45,12 @@ SLAMInference <- function(nStop = 100, nSim = 25,
     Simulator <- SimInfSimulator_sandbox
 
     if(binary){
-        ##for parallell sampling
         column <- "sample"
-        logical <- TRUE
     } else {
         column <- "I"
-        logical <- FALSE
     }
 
+    logical <- FALSE
     cl <- NULL
 
     ## load data that is included the SimInf package
@@ -85,18 +83,6 @@ SLAMInference <- function(nStop = 100, nSim = 25,
     ## The Estimator
     Estimator <- SLAM
 
-
-    ## True parameter
-    ## upsilon <- 0.0075
-    ## beta_t1 <- 0.05
-    ## beta_t2 <- 0.085 ## whic is = 1.69*beta_t1
-    ## gamma <- 0.1
-
-
-
-    ##thetaTrue <- c(upsilon = upsilon, beta_t1= beta_t1, beta_t2 = beta_t2, gamma = gamma)
-
-
     ## pertubate starting guess
     if(pertubate)
         pert <- runif(length(thetaTrue), 0.95, 1.05)
@@ -107,10 +93,6 @@ SLAMInference <- function(nStop = 100, nSim = 25,
         theta0 <- log(pert * thetaTrue)
     else
         theta0 <- pert*thetaTrue
-
-    ## if(is.null(S))
-    ##     S = 2.4^2/length(thetaTrue) ## optimal from authors.
-
 
     extraArgsEstimator <- list(parameters = names(thetaTrue),
                                nStop = nStop, nSim = nSim, debug = debug, theta0 = theta0,
@@ -173,7 +155,7 @@ contInference <- function(infe, nStop = 100){
 ##' @param bs bootstrap or not
 ##' @param multiSS how many times to evaluate the point.
 pertubationSL <- function(thetalength = 21,
-                          nSim = 20, pert = c(0.8,1.2),
+                          nSim = 20, pert = c(0.9,1.1),
                           solver = "ssm", binary = FALSE,
                           obsspan = 60,
                           bs = TRUE,
@@ -194,13 +176,13 @@ pertubationSL <- function(thetalength = 21,
     Simulator <- SimInfSimulator_sandbox
 
     if(binary){
-        ##for parallell sampling
         column <- "sample"
-        logical <- TRUE
     } else {
         column <- "I"
-        logical <- FALSE
     }
+
+    logical <- FALSE
+    cl <- NULL
 
 
     ## load data that is included the SimInf package
@@ -274,29 +256,4 @@ pertubationSL <- function(thetalength = 21,
     infe$runEstimation()
 
     return(infe)
-}
-
-restartBugTest <- function(N=1000, n = 25, divisions = 4, S = 1e-4, solver = "ssm", debug = FALSE){
-
-    sAll <- SLAMInference(N, n, S = S, solver = solver, debug = debug)
-    dAll <- sAll$getPosterior()
-
-    sShort <- SLAMInference(N/divisions, n, S = S, solver = solver, debug = debug)
-    for(i in seq_len(divisions-1)){
-        sShort <- contInference(sShort,N/divisions)
-    }
-    dShort <- sShort$getPosterior()
-
-
-    d <- data.frame(all = dAll[,5], divided = dShort[,5])
-    rate <- apply(d,2,function(x){length(unique(x))})/ N
-    print(rate)
-    return(list(d = d, sAll = sAll, sShort = sShort))
-}
-
-foraNight <- function(N, S){
-    sfull <- SLAMInference(nStop = N, S = S, pertubate = TRUE)
-    sbin <- SLAMInference(nStop = N, S = S, column = "sample", binary = TRUE, pertubate = TRUE)
-
-    return(list(sfull = sfull, sbin = sbin))
 }

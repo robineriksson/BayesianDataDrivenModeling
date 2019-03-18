@@ -81,27 +81,7 @@ SimInfSimulator_sandbox <- function(theta, extraArgs){
                               time = rep(tObs, length(nObs)),
                               sample)
 
-        ## ## This needs to be done only ones!
-        ## if(flag){
-        ##     ##obsTimeElem <- sapply(as.list(seq_len(length(nObs))), function(X) {
-        ##     ##obsTimeElem <- sapply(as.list(nObs), function(X) {
-        ##     jOld <- 1
-        ##     jNew <- 0
-        ##     for(i in 1:length(nObs)){
-        ##         sim <- traj.df[traj.df$node == nObs[i],]
-        ##         obs <- obsDates[obsDates$node == nObs[i],]
-        ##         found <- which(sim$time %in% obs$numTime)
-        ##         jNew <- jOld + length(found)
-        ##         ##if(i == 1) jOld <- 1;
-        ##         obsTimeElem[jOld:(jNew-1)] <- length(tObs)*(i-1) + found
-        ##         jOld <- jNew
-        ##     }
-
-        ##     flag <- FALSE
-
-        ##traj.df$time <- zoo::as.Date(traj.df$time, origin = "2005-01-01")
         traj[[n]] <- traj.df
-        ##traj[[n]] <- reducedTraj ##fulltraj[fulltraj$time %in% tObs,]
     }
 
     out <- traj
@@ -148,6 +128,7 @@ SimInfSimulator_real <- function(theta, extraArgs){
     nSim <- extraArgs$nSim
     obsDates <- extraArgs$obsDates
     useSMHI <- extraArgs$useSMHI
+    dataDir <- extraArgs$dataDir
 
 
 
@@ -160,9 +141,9 @@ SimInfSimulator_real <- function(theta, extraArgs){
     ## load "model"
     if(is.null(model)) {
         if(useSMHI)
-            load("~/Gits/BPD/R/DATA/secret/SISe_SMHI.rda")
+            load(paste(dataDir, "SISe_SMHI.rda", sep = ""))
         else
-            load("~/Gits/BPD/R/DATA/secret/SISe.rda")
+            load(paste(dataDir, "SISe.rda", sep = ""))
     }
 
     ##model <- init_model_SISe_real(model = model, theta = theta, tspan = tspan, prevLevel = prevLevel, prevHerds = prevHerds)
@@ -195,8 +176,6 @@ SimInfSimulator_real <- function(theta, extraArgs){
 
         ## This needs to be done only ones!
         if(flag){
-            ##obsTimeElem <- sapply(as.list(seq_len(length(nObs))), function(X) {
-            ##obsTimeElem <- sapply(as.list(nObs), function(X) {
             jOld <- 1
             jNew <- 0
             for(i in 1:length(nObs)){
@@ -211,9 +190,7 @@ SimInfSimulator_real <- function(theta, extraArgs){
 
             flag <- FALSE
         }
-        ##traj.df$time <- zoo::as.Date(traj.df$time, origin = "2005-01-01")
         traj[[n]] <- traj.df[obsTimeElem,]
-        ##traj[[n]] <- reducedTraj ##fulltraj[fulltraj$time %in% tObs,]
     }
 
     out <- traj

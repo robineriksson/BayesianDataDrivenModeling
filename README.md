@@ -31,7 +31,6 @@ The catalog structure follows,
   - SimInfInference
     - R
     - src
-    - tests
 
 #### Scripts
 All the scripts used for the computations, using the class from SimInfInference.
@@ -39,14 +38,24 @@ All the scripts used for the computations, using the class from SimInfInference.
 * **DATA**, The collection of data used in the paper.
 
 * **INFERENCE**, Divided into three subfolders, the 1600 synthetic data
-  (1600system), the full dataset (realsystem), and scripts for our plotting and 
+  (1600system), the full dataset (realsystem), and scripts for our plotting and
   table construction.
 
 * **PREVDEC**, The experiments that use the posterior generated from
   INFERENCE in the frame of public health.
 
-#### SimInfInference
+#### SimInfInference Class inspired code structure presented as a
+R-package. Acts as a wrapper around SimInf.
 
+4 main compartments are used:
+* Simulator: what simulator to use, we
+  wrap around SimInf, but can be easily extended to other alternatives.
+* SummaryStatistics: how to summarize the data.
+* Proposal: how to propose new parameters.
+* Estimator: what parameter estimator to use.
+
+The code is written in two folders, R and src. Where R hold the R code
+and src the RCPP. RCPP was used for some task for easy speed-up.
 
 ## References
 

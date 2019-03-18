@@ -19,37 +19,46 @@ library(SimInfInference)
 ##' @param logParam observe the log-param space?
 ##' @param useW use weighted Summary Statistics
 ##' @param useSMHI use SMHI based seasons.
+##' @param dataDir path to the directory holding data used in simulation.
 SLAMInference <- function(nStop = 1e3, nSim = 20,
                           debug = FALSE, solver = "ssm",
                           binary = FALSE,
                           Sw = 1e-3,
                           S = 1e-3, e = NULL,
                           normalize = TRUE, pertubate = TRUE,
-    			  thetaTrue <- c(upsilon = 0.01754161,
-                    	  		 beta_t1 = 0.15860932,
-                    	  		 beta_t2 = 0.14621449,
-                    	  		 beta_t3 = 0.15045281,
-                    	  		 gamma = 0.10044851,
-    		    	  		 prev = 0.02027267),
-			  threads = NULL,
+    			  thetaTrue = c(upsilon = 0.01754161,
+                                        beta_t1 = 0.15860932,
+                                        beta_t2 = 0.14621449,
+                                        beta_t3 = 0.15045281,
+                                        gamma = 0.10044851,
+                                        prev = 0.02027267),
+                          threads = NULL,
                           bs = TRUE, obsSeed = 0, seed = 0,
-                          logParam = FALSE, useW = TRUE, useSMHI = TRUE){
+                          logParam = FALSE, useW = TRUE, useSMHI = TRUE,
+                          dataDir){
     if(!is.null(Sw))
         S <- Sw
     if(is.null(e))
         e <- S/100
 
+    ## filepaths
+    paths["observations"] <- paste(dataDir, "obsCleanDates.RData", sep="")
+    if(useSMHI)
+        paths["model"] <- paste(dataDir, "SISe_smhi.rda", sep="")
+    else
+        paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nobs"] <- paste(dataDir, "nObs.RData", sep="")
 
-    load("~/Gits/BPD/R/DATA/secret/obsCleanDates.RData") ## loads: observation.dates
- 
+
+
+    load(paths["observations"]) ## loads: observation.dates
+
 
     ## We only to run the simulation for the maximum time that we have observations for.
     ## But we should start at the same time as the movements as they will affect
     ## the state of the distribution of induvidials at nodes.
-     if(useSMHI)
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## loads: model
-    else
-        load("~/Gits/BPD/R/DATA/secret/SISe.rda") ## loads: model
+    load(paths["model"]) ## loads: model
+
 
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
     realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
@@ -66,10 +75,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
 
 
     ## load d (distance between the observed nodes)
-    load("~/Gits/BPD/R/DATA/secret/d.RData") ## loads: distance matrix d
-    nObs <- colnames(d)
-    ## all nodes
-    ##nodes <- 1:37221
+    load(paths["nobs"]) ## load: nObs
 
     ## The Simulator.
     Simulator <- SimInfSimulator_real
@@ -81,7 +87,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     }
     logical <- FALSE
 
- 
+
     cl <- NULL
 
 
@@ -92,8 +98,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     events <- NULL
     u0 <- NULL
 
-    ## loads variable: model
-    load("~/Gits/BPD/R/DATA/secret/SISe.rda")
+
     ##phiLevel <- 0.05
     phiLevel <- "local"
     if("prev" %in% names(thetaTrue))
@@ -105,7 +110,8 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
                                runSeed = NULL, threads = NULL, solver = solver,
                                prevLevel = prevLevel, prevHerds = prevLevel, phiLevel = phiLevel,
                                u0 = u0, events = events, binary = binary, model = model,
-                               nSim = nSim, obsDates = observation.dates, useSMHI =  useSMHI)
+                               nSim = nSim, obsDates = observation.dates, useSMHI =  useSMHI,
+                               dataDir = dataDir)
 
 
     ## The Summary statistics
@@ -189,5 +195,3 @@ contInference <- function(infe, nStop = 100){
 
     return(infe)
 }
-
-

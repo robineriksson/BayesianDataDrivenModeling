@@ -43,15 +43,21 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     ## S = 5e-4 -> 1.4% or 2.2% acc.rate
     set.seed(seed) ## set up simulator
 
-    load("~/Gits/BPD/R/DATA/secret/obsCleanDates.RData") ## loads: observation.dates
+    paths["observations"] <- paste(dataDir, "obsCleanDates.RData", sep="")
+    if(useSMHI)
+        paths["model"] <- paste(dataDir, "SISe_smhi.rda", sep="")
+    else
+        paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nobs"] <- paste(dataDir, "nObs.RData", sep="")
+
+
+    load(paths["observations"]) ## loads: observation.dates
 
     ## We only to run the simulation for the maximum time that we have observations for.
     ## But we should start at the same time as the movements as they will affect
     ## the state of the distribution of induvidials at nodes.
-    if(useSMHI)
-        load("~/Gits/BPD/R/DATA/secret/SISe_smhi.rda") ## loads: model
-    else
-        load("~/Gits/BPD/R/DATA/secret/SISe.rda") ## loads: model
+    load(paths["model"]) ## loads: model
+
 
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
     realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
@@ -63,7 +69,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
     ## load names of the observed nodes -> nObs
-    load("~/Gits/BPD/R/DATA/secret/nObs.RData") ## load: nObs
+    load(paths["nobs"]) ## load: nObs
 
 
     ## The Simulator.
@@ -158,5 +164,3 @@ contInference <- function(infe, nStop = 100){
 
     return(infe)
 }
-
-
