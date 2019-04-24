@@ -18,21 +18,23 @@ library(SimInfInference)
 ##' @param seed the seed used for the param. estimation
 ##' @param logParam observe the log-param space?
 ##' @param useW use weighted Summary Statistics
-##' @param useSMHI use SMHI based seasons.
-SLAMInference <- function(nStop = 1e3, nSim = 20,
+##' @param B the number of bootstrap replicates
+##' @param dataDir the directory holding the epi-modeldata
+SLAMInference <- function(nStop = 1e3, nSim = 10,
                           debug = FALSE, solver = "ssm",
                           Sw = NULL,
-                          S = 1e-3, e = NULL,
+                          S = 1e-4, e = NULL,
                           normalize = TRUE, pertubate = TRUE,
-                          thetaTrue = c(upsilon = 1.75e-2,
-                                        beta_t1 = 1.57e-1,
-                                        beta_t2 = 1.44e-1,
-                                        beta_t3 = 1.50e-1,
-                                        gamma = 0.1,
-                                        prev = 0.02),
+                          thetaTrue = c(upsilon = 0.01563841,
+                                        beta_t1 = 0.14309175,
+                                        beta_t2 = 0.13366590,
+                                        beta_t3 = 0.15541914,
+                                        gamma = 0.09720055,
+                                        prev = 0.02537256),
                           threads = NULL,
                           bs = TRUE, seed = 0,
-                          logParam = FALSE, useW = TRUE, useSMHI = TRUE){
+                          logParam = FALSE, useW = TRUE, B = 100,
+                          dataDir = NULL){
     if(!is.null(Sw))
         S <- Sw
     if(is.null(e))
@@ -43,15 +45,15 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     ## S = 5e-4 -> 1.4% or 2.2% acc.rate
     set.seed(seed) ## set up simulator
 
-    paths["observations"] <- paste(dataDir, "obsCleanDates.RData", sep="")
-    if(useSMHI)
-        paths["model"] <- paste(dataDir, "SISe_smhi.rda", sep="")
-    else
-        paths["model"] <- paste(dataDir, "SISe.rda", sep="")
-    paths["nobs"] <- paste(dataDir, "nObs.RData", sep="")
+    paths <- NULL
+    paths["obs"] <- paste(dataDir, "obs.rda", sep="")
+    paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nObs"] <- paste(dataDir, "nObs.RData", sep="")
 
 
-    load(paths["observations"]) ## loads: observation.dates
+    load(paths["obs"]) ## loads: obs
+    obs$sample <- as.numeric(obs$status)
+
 
     ## We only to run the simulation for the maximum time that we have observations for.
     ## But we should start at the same time as the movements as they will affect
@@ -61,15 +63,16 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
 
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
     realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
-    tinObs <- sort(unique(observation.dates$time))
+    tinObs <- sort(unique(obs$time))
     tObs <- as.numeric(tinObs) - (as.numeric(tinObs[1]) - tspan0[which(realDates == tinObs[1])])
-    observation.dates$numTime <- as.numeric(observation.dates$time) - as.numeric(tinObs[1]) +
+    obs$numTime <- as.numeric(obs$time) - as.numeric(tinObs[1]) +
         tspan0[which(realDates == tinObs[1])]
 
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
+
     ## load names of the observed nodes -> nObs
-    load(paths["nobs"]) ## load: nObs
+    load(paths["nObs"]) ## load: nObs
 
 
     ## The Simulator.
@@ -90,12 +93,14 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
                                runSeed = NULL, threads = NULL, solver = solver,
                                prevLevel = prevLevel, prevHerds = prevLevel, phiLevel = phiLevel,
                                u0 = u0, events = events, binary = TRUE, model = model,
-                               nSim = nSim, obsDates = observation.dates, useSMHI = useSMHI)
+                               nSim = nSim, obsDates = obs)
 
 
     ## The Summary statistics
     SummaryStatistics <- aggWilkinson
-
+    if(is.null(B))
+        B <- nSim*20
+    fun = sum
     extraArgsSummaryStatistics <- list(column = "sample", fun = mean, qtr = TRUE,  bs = bs,
                                        B = nSim*20, useW = useW, logical = FALSE)
 
