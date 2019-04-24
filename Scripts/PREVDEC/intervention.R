@@ -135,8 +135,8 @@ runSimulator <- function(N, filename, dataDir) {
 
 
     ## define tspan vector
-    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
-    load(sise_smhi_path) ## load model
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise_path) ## load model# load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Pre run until intervetion day
@@ -167,7 +167,7 @@ runSimulator <- function(N, filename, dataDir) {
         theta <- setTheta(t)
 
         ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -223,7 +223,7 @@ runSimulator <- function(N, filename, dataDir) {
         theta <- setTheta(t)
 
         ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -262,7 +262,7 @@ runSimulator <- function(N, filename, dataDir) {
         theta <- setTheta(t)
 
          ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -293,7 +293,7 @@ runSimulator <- function(N, filename, dataDir) {
         theta <- setTheta(t)
 
          ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -332,7 +332,7 @@ runSimulator <- function(N, filename, dataDir) {
         theta <- setTheta(t)
 
          ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,

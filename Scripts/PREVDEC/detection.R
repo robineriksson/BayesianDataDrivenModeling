@@ -123,8 +123,8 @@ drawPosterior <- function(N, filename) {
 ##' @param dataDir the path to the directory that holds the data
 runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL, dataDir) {
     ## define tspan vector
-    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
-    load(sise_smhi_path) ## load model
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise_path) ## load model
     tspan <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     tmeasurment <- seq(round(median(tspan)),tail(tspan,1),15)
@@ -230,8 +230,8 @@ rankNodes <- function(run, M = 10, rankP = FALSE, na.rm = FALSE) {
 ##' @param M number of selected nodes
 ##' @param dataDir the path to the drectory that holds the data
 networkEval <- function(M = 10, dataDir) {
-    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
-    load(sise_smhi_path) ## loads: model
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise_path) ## load model
     events <- model@events
 
 

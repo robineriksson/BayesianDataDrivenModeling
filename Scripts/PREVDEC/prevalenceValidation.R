@@ -57,8 +57,8 @@ runSimulation <- function(nodes = 250, N = 100, extend = NULL,
 
 
     ## define tspan vector
-    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
-    load(sise_smhi_path) ## load model
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise__path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -115,7 +115,7 @@ runSimulation <- function(nodes = 250, N = 100, extend = NULL,
         theta <- setTheta(t)
 
         ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -301,8 +301,8 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
 
 
     ## define tspan vector
-    sise_smhi_path <- paste(dataDir, "SISe_smhi.rda", sep = "")
-    load(sise_smhi_path) ## load model
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise__path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -342,7 +342,7 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
     ## what nodes to sample?
     nodes.events <- sampleNodes(eventsOI.exit, nodes, extend)
     nodes.all <- NULL
-    nObs_path = paste(dataDir, "nObs.RData", sep ="")
+    nObs_path = paste(dataDir, "nObs.rda", sep ="")
     load(nObs_path)
     nodes.n126 <- as.numeric(nObs)
 
@@ -363,7 +363,7 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
         theta <- setTheta(t)
 
         ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
