@@ -133,11 +133,11 @@ computeDelta <- function(Simulator, SummaryStatistics,
 
     ## Calculate the summary statistics.
     if(is(data, "try-error")){
-        ss.m <- t(matrix(NA, ncol = 1, nrow = length(ss_obs)))
+        ss.m <- t(matrix(NA, nrow = 1, ncol = length(ss_obs)))
     } else {
         ss.m <- t(matrix(SummaryStatistics(data = data,
                                            extraArgs = extraArgsSummaryStatistics),
-                         ncol = 1))
+                         nrow = 1))
     }
 
     ## Check distance between SS
@@ -231,8 +231,31 @@ ABC_pkg <- function(observation, Simulator, SummaryStatistics, Proposal,
     return(list(posterior = theta.d))
 }
 
-
-##' SLMCMC estimator. Will perform
+##' --------------------------------------------------------------
+##' Algortihm:
+##' n <- 1
+##' t <- init parameter
+##' d <- simulate nSim data with (t)
+##' ss <- summary statistics
+##' sl <- compute synthetic likelihood. (ss matrix)
+##' While  n < Nstop
+##' --- t' <- propose parameters using Kernel K(t'|t)
+##' --- d <- simulate nSim data with (t)
+##' --- s <- transform into summary statistics(d)
+##' --- sl' <- compute synthetic likelihood (s matrix)
+##' --- a <- min(1, exp(sl' - sl))
+##' --- u <- U[0,1]
+##' --- if(u < a)
+##' --- --- store t in theta
+##' --- --- t <- t'
+##' --- --- sl <- sl'
+##' --- --- n <- n + 1
+##' --- else
+##' --- --- n <- n
+##' --- ---
+##' return theta
+##' --------------------------------------------------------------
+##' SLMCMC estimator. Will perfome
 ##' Computes the synthetic likelihood (SL) (Wood 2010) and the performes a Metropolis-Hasting algortihm
 ##' with SL instead of the true likelihood
 ##' @param observation Observed data, that parameters are to be fit to.
@@ -639,7 +662,118 @@ SLAMreInit <- function(observation, Simulator, SummaryStatistics, Proposal,
 
     lenStop <- d+nStop-1
 
-    return(list(d = d, theta = theta, syntl = syntl))  
+    return(list(d = d, theta = theta, syntl = syntl))
+
+
+    ## if(debug)
+    ##     print(sprintf("sl = %f", sl_old))
+
+    ## ## report acceptance rate
+    ## numAcc <- length(unique(syntl[1:d])) ## this will result in a new
+    ##                                      ## "total acceptance rate"
+    ##                                      ## not only for this sesssion
+
+    ## ## progressbar
+    ## pb <- pbapply::timerProgressBar(width = 50)
+
+
+    ## lenStop <- d+nStop-1
+
+    ## ## every 100th value is to have init.
+    ## if(!(d %% 100))
+    ##     init <- TRUE
+    ## else
+    ##     init <- FALSE
+
+    ## ## ----------------------------- ##
+    ## ## --- Main SLAM algorithm ----- ##
+    ## ## ----------------------------- ##
+    ## for (n in d:lenStop){
+    ##     ## ---------------------------- ##
+    ##     ## --- Propose parameters ----- ##
+    ##     ## ---------------------------- ##
+
+    ##     ## Estimate covariance
+    ##     if(n <= n0){
+    ##         sigma <- diag(rep(C0,length(theta[n,])))
+    ##     } else if(init) {
+    ##         C <- cov.est(theta[1:n,])
+    ##         sigma <- S * C + S*e*diag(length(theta[n,]))
+    ##         xbar <- apply(theta[1:n,],2,mean)
+    ##         init <- FALSE
+    ##     } else {
+    ##         C.rec <- cov.rec(theta[n,], xbar = xbar, C = sigma, k = n, s = S, e = e)
+    ##         sigma <- C.rec$C
+    ##         xbar <- C.rec$xbar
+
+    ##         ## to make sure that the recursive covariance is in line with
+    ##         ## the correct value, re-init the covariance every 100th value.
+    ##         if(!(n %% 100))
+    ##             init <- TRUE
+    ##     }
+
+    ##     ## stepping
+
+    ##     eps <- MASS::mvrnorm(1, mu = numeric(length(theta[n,])), Sigma = sigma)
+    ##     theta_prop <- theta[n,] + eps
+
+
+    ##     ## ---------------------------- ##
+    ##     ## Compute synthetic likelihood ##
+    ##     ## ---------------------------- ##
+    ##     sl_new <- computeSL(Simulator, SummaryStatistics,
+    ##                         extraArgsSimulator,
+    ##                         extraArgsSummaryStatistics,
+    ##                         extraArgsEstimator,
+    ##                         theta_prop, ss_obs)
+
+
+    ##     ## ---------------------------- ##
+    ##     ## ---acceptance probability--- ##
+    ##     ## ---------------------------- ##
+    ##     alpha <- min(1, exp(sl_new - sl_old))
+
+    ##     u <- runif(n = 1)
+
+    ##     if(debug){
+    ##         cat("\n***************\ndebug info\n***************\n")
+    ##         cat(exp(theta_prop),"\n")
+    ##         cat("\n")
+    ##         cat("sl = ", sl_new, "\n")
+    ##         cat("alpha = ", alpha, "\n")
+    ##         cat("u = ", u, "\n")
+    ##     }
+
+
+    ##     if(u <= alpha){
+    ##         if(debug){
+    ##             cat("hit\n")
+    ##         }
+    ##         numAcc <- numAcc + 1
+    ##         theta[n+1,] <- theta_prop
+    ##         syntl[n+1] <- sl_new
+    ##         sl_old <- sl_new
+
+    ##     } else {
+    ##         theta[n+1,] <- theta[n,]
+    ##         syntl[n+1] <- syntl[n]
+    ##     }
+
+    ##     ## update progressbar
+    ##     pbapply::setTimerProgressBar(pb, (n-(d-1))/(lenStop-(d-1)))
+    ## }
+    ## close(pb)
+
+    ## cat("\nAcceptance rate: ", numAcc/(lenStop+1), "\n")
+
+    ## ## organize output
+    ## if(logParam)
+    ##     thetaOut <- exp(theta)
+    ## else
+    ##     thetaOut <- theta
+    ## theta.d <- data.frame(thetaOut, syntl)
+    ## names(theta.d) <- c(parameters, "Synthetic likelihood")
+    ## return(list(posterior = theta.d, slamOut = list(xbar = xbar, sigma = sigma)))
 }
 
 cov.est <- function(X){
@@ -722,15 +856,6 @@ computeSL <- function(Simulator, SummaryStatistics,
     else
         thetaProp <- theta
 
-    ## Simulate data
-    data <- try(
-        Simulator(theta = thetaProp, extraArgs = extraArgsSimulator)
-    )
-    if(is(data, "try-error"))
-        return(-Inf)
-
-
-
     if(bs)
         ncol <- extraArgsSummaryStatistics$B
     else
@@ -739,9 +864,22 @@ computeSL <- function(Simulator, SummaryStatistics,
     ## Calculate the summary statistics.
     sl <- numeric(nSS)
     for(n in seq_len(nSS)) {
+
+        ## Simulate data
+        data <- try(
+            Simulator(theta = thetaProp, extraArgs = extraArgsSimulator)
+        )
+        if(is(data, "try-error"))
+            return(-Inf)
+
+
         ##ss.m <- t(matrix(0, ncol = ncol, nrow = length(ss_obs)))
         ss <- SummaryStatistics(data = data,
                                 extraArgs = extraArgsSummaryStatistics)
+
+
+
+
         if(class(ss) == "matrix"){
             if(dim(ss)[1] == ncol)
                 ss.m <- ss
@@ -770,6 +908,11 @@ computeSL <- function(Simulator, SummaryStatistics,
         ## make sure that sl_new stays numeric and not factor (a bug)
         if(class(sl[n]) == "factor")
             sl[n] <- as.numeric(levels(sl[n])[sl[n]])
+
+        ## cat("\n")
+        ## print(round(as.numeric(apply(ss,1,mean)),4))
+        ## cat("\n")
+        ## print(sl[n])
     }
 
     return(sl)
@@ -941,59 +1084,24 @@ slGrid <- function(observation, Simulator, SummaryStatistics, Proposal,
     ss_obs <- SummaryStatistics(data = observation, extraArgs = extraArgsSummaryStatistics)
 
     ## create grid of all possible combinations.
-    upsilon <- seq(from = pert[1]*theta0[["upsilon"]],
-                   to = pert[2]*theta0[["upsilon"]],
-                   length.out = thetalength)
+    thetaVec <- genGrid(theta0 = theta0, pert = pert,
+                        thetalength = thetalength, allDim = allDim)
 
-    beta_t1 <- seq(from =  pert[1]*theta0[["beta_t1"]],
-                   to =  pert[2]*theta0[["beta_t1"]],
-                   length.out = thetalength)
-
-    beta_t2 <- seq(from =  pert[1]*theta0[["beta_t2"]],
-                   to =  pert[2]*theta0[["beta_t2"]],
-                   length.out = thetalength)
-
-    gamma <- seq(from =  pert[1]*theta0[["gamma"]],
-                 to =  pert[2]*theta0[["gamma"]],
-                 length.out = thetalength)
-
-
-
-    ## create a parameter grid to traverse.
-    if(allDim) {
-        thetaVec <- expand.grid(upsilon, beta_t1, beta_t2, gamma)
-        colnames(thetaVec) <- c("upsilon", "beta_t1", "beta_t2", "gamma")
-    } else {
-        thetaVec <- as.data.frame(matrix(0, nrow = thetalength*length(theta0),
-                                         ncol = length(theta0)))
-        names(thetaVec) <- c("upsilon", "beta_t1", "beta_t2", "gamma")
-
-        thetaVec$upsilon <- c(upsilon, rep(theta0["upsilon"], thetalength*(length(theta0)-1)))
-
-        thetaVec$beta_t1<- c(rep(theta0["beta_t1"], thetalength), beta_t1,
-                             rep(theta0["beta_t1"],thetalength*(length(theta0)-2)))
-
-        thetaVec$beta_t2<- c(rep(theta0["beta_t2"], thetalength*(length(theta0)-2)),
-                             beta_t2,
-                             rep(theta0["beta_t2"],thetalength))
-
-        thetaVec$gamma <- c(rep(theta0["gamma"], thetalength*(length(theta0)-1)), gamma)
-    }
 
 
     len <- dim(thetaVec)[1]
-
-
-
     ## Computed synthetic likelihood vector .
-    sl_vec <- numeric(len)
+    sl_vec <- matrix(NA, nrow = len, ncol = multiSS)
 
+    theta_prop <- theta0
     pb <- pbapply::timerProgressBar(width = 50)
     for(i in 1:len){
-        theta_prop <- c(upsilon = thetaVec$upsilon[i],
-                        beta_t1 = thetaVec$beta_t1[i],
-                        beta_t2 = thetaVec$beta_t2[i],
-                        gamma = thetaVec$gamma[i])
+        for(j in seq_len(length(theta0)))
+            theta_prop[j] <- thetaVec[i,j]
+        ## theta_prop <- c(upsilon = thetaVec$upsilon[i],
+        ##                 beta_t1 = thetaVec$beta_t1[i],
+        ##                 beta_t2 = thetaVec$beta_t2[i],
+        ##                 gamma = thetaVec$gamma[i])
 
         sl_new <- computeSL(Simulator, SummaryStatistics,
                             extraArgsSimulator,
@@ -1001,13 +1109,50 @@ slGrid <- function(observation, Simulator, SummaryStatistics, Proposal,
                             extraArgsEstimator,
                             theta_prop, ss_obs)
 
-        sl_vec[i] <- sl_new
+        sl_vec[i,] <- sl_new
         pbapply::setTimerProgressBar(pb, i/len)
     }
     close(pb)
 
     theta.d <- data.frame(thetaVec, dist = sl_vec)
     return(list(posterior = theta.d))
+}
+
+##' generate parameter grid to explore
+##' @param theta0 the center point
+##' @param thetalength how fine the grid should be
+##' @param pert by how much should the center be pertubated?
+##' @param allDim 1d or all d?
+##' @export
+genGrid <- function(theta0, thetalength, pert, allDim){
+
+    ## create grid of all possible combinations.
+    theta.list <- list()
+    for (i in seq_len(length(theta0))) {
+        theta.i <- seq(from = pert[1]*theta0[i],
+                       to = pert[2]*theta0[i],
+                       length.out = thetalength)
+        theta.list[[length(theta.list)+1]] <- theta.i
+    }
+
+    ## create a parameter grid to traverse.
+    if(allDim) {
+
+        thetaVec <- expand.grid(theta.list)
+        colnames(thetaVec) <- names(theta0)
+    } else {
+        thetaVec <- as.data.frame(matrix(0, nrow = thetalength*length(theta0),
+                                         ncol = length(theta0)))
+        names(thetaVec) <- names(theta0)
+
+        for (i in seq_len(length(theta0))) {
+            prebox <- rep(theta0[i], thetalength*(i-1))
+            postbox <- rep(theta0[i], thetalength*(length(theta0)-i))
+
+            thetaVec[,i] <- c(prebox, theta.list[[i]], postbox)
+        }
+    }
+    return(thetaVec)
 }
 
 ##' Numerically find maximumlikelihood estimate

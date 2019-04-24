@@ -111,8 +111,8 @@ IntegerVector sample_pools_Rcpp(int S, int I){
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            mMat[i,j] = siVec[cols*i+j];
-            rowSum[i] += mMat[i,j];
+            mMat(i,j) = siVec[cols*i+j];
+            rowSum[i] += mMat(i,j);
         }
     }
 

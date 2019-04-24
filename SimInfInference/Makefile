@@ -24,7 +24,7 @@ check:
 
 # Install dependencies
 alldepend:
-	Rscript -e 'install.packages(c("MASS", "abc", "synlik", "R6", "SimInf", "Matrix", "data.table", "akima", "plot3D", "lattice", "pbapply", "GGally", "ggthemes", "ggplot2", "zoo"), repos="http://cran.rstudio.com")'
+	Rscript -e 'install.packages(c("MASS", "abc", "synlik", "R6", "SimInf", "Matrix", "data.table", "akima", "plot3D", "lattice", "pbapply", "GGally", "ggthemes", "ggplot2", "zoo", "Rcpp", " Weighted.Desc.Stat"), repos="http://cran.rstudio.com")'
 
 # Install bare minimum
 mindepend:

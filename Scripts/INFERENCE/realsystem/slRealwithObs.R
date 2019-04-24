@@ -34,7 +34,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
                           threads = NULL,
                           bs = TRUE, seed = 0,
                           logParam = FALSE, useW = TRUE, B = 100,
-                          dataDir = NULL){
+                          dataDir){
     if(!is.null(Sw))
         S <- Sw
     if(is.null(e))
@@ -44,6 +44,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
     ## S = 5e-5 -> 3.56%
     ## S = 5e-4 -> 1.4% or 2.2% acc.rate
     set.seed(seed) ## set up simulator
+
 
     paths <- NULL
     paths["obs"] <- paste(dataDir, "obs.rda", sep="")
@@ -93,7 +94,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
                                runSeed = NULL, threads = NULL, solver = solver,
                                prevLevel = prevLevel, prevHerds = prevLevel, phiLevel = phiLevel,
                                u0 = u0, events = events, binary = TRUE, model = model,
-                               nSim = nSim, obsDates = obs)
+                               nSim = nSim, obsDates = obs, dataDir = dataDir)
 
 
     ## The Summary statistics
@@ -101,8 +102,8 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
     if(is.null(B))
         B <- nSim*20
     fun = sum
-    extraArgsSummaryStatistics <- list(column = "sample", fun = mean, qtr = TRUE,  bs = bs,
-                                       B = nSim*20, useW = useW, logical = FALSE)
+    extraArgsSummaryStatistics <- list(column = "sample", fun = fun, qtr = TRUE,  bs = bs,
+                                       B = B, useW = useW, logical = FALSE)
 
     Proposal <- NULL
     extraArgsProposal <- NULL
@@ -137,7 +138,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
 
 
     ## load in observation
-    infe$setObservation(list(observation.dates))
+    infe$setObservation(list(obs))
 
     ## explore the posterior!
     infe$runEstimation()

@@ -31,39 +31,59 @@ Inference <- R6::R6Class("Inference",
                                  private$extraArgsProposal <- extraArgsProposal
                              },
                              ## Check if summary statistics are normally distributed for N simulations.
-                             normalTest = function(theta, N = NULL){
+                             normalTest = function(theta, N = NULL, bs = FALSE, Btimes = 20, withObs = FALSE){
                                  ## Get the nSim variable from the estimator argument
                                  nSim <- private$extraArgsEstimator$nSim
 
                                  ## Check for normality!
                                  ss.list <- list()
                                  ## Simulate data
+                                 extraArgsSimulator <- private$extraArgsSimulator
+
                                  if(!is.null(N))
-                                     self$changeExtraArgsSimulator(nSim = N)
+                                     extraArgsSimulator$nSim = N
                                  else
-                                     N <- private$extraArgsSimulator$nSim
+                                     N <- extraArgs$N
 
-                                 data <- self$runSimulator(theta=theta)
+                                 data <- private$Simulator(theta = theta, extraArgs = extraArgsSimulator)
                                  ## Extract Summary Statistics from data!
-                                 ss.c <- private$SummaryStatistics(data = data, extraArgs = private$extraArgsSummaryStatistics)
-                                 if(!is.null(N))
-                                     self$changeExtraArgsSimulator(nSim = nSim)
+                                 extraArgsSummary <- private$extraArgsSummaryStatistics
+                                 extraArgsSummary$bs <- bs
+                                 extraArgsSummary$B <-  Btimes*N
 
+                                 ss.c <- private$SummaryStatistics(data = data, extraArgs = extraArgsSummary)
 
-                                 ss.m <- t(matrix(ss.c, ncol = N))
+                                 if(withObs)
+                                     ss.obs <- private$SummaryStatistics(data = private$observation,
+                                                                         extraArgs = extraArgsSummary)
+                                 else
+                                     ss.obs <- NULL
+
+                                 ncol <- ifelse(bs, N*Btimes, N)
+                                 ss.m <- t(matrix(ss.c, ncol = ncol))
+
+                                 ## names of SS
+                                 colnames(ss.m) <- rownames(ss.c)
 
                                  shap <- apply(ss.m,2, function(x){shapiro.test(x)$p.value} > 0.05)
                                  print(shap)
                                  ##jb <- apply(ss.m,2, function(x){jb.norm.test(x)$p.value} > 0.05)
                                  ## QQ plots
                                  len <- dim(ss.m)[2]
-                                 numCols = ceiling(len/2)
+                                 numCols = ceiling(len)
                                  par(mfrow = c(2,numCols))
                                  for(i in 1:len){
                                      qqnorm(ss.m[,i], main = names(ss.m)[i])
                                      qqline(ss.m[,i])
                                  }
-                                 return(shap.test = shap)
+                                 for(i in 1:len){
+                                     hist(ss.m[,i], main = colnames(ss.m)[i], freq=FALSE)
+                                     curve(dnorm(x, mean(ss.m[,i]), sd(ss.m[,i])), col = "red", add=T)
+                                     if(withObs)
+                                         abline(v = ss.obs[i], col = "blue")
+                                 }
+                                 #print(ss.obs)
+                                 return(list(shap = shap, ss = ss.m))
                              },
                              ## use the estimator with the supplied functions and arguments.
                              runEstimation = function(){
@@ -220,20 +240,31 @@ Inference <- R6::R6Class("Inference",
                                  return(private$EstimatorOutput)
                              },
                              ## Get the acceptance rate from Estimator
-                             getAccRate = function(){
+                             getAccRate = function(plotMe){
                                  if(private$first)
                                      return(0)
                                  else {
                                      d <- self$getPosterior()
+
                                      dims <- dim(d)
                                      rows <- dims[1]
                                      cols <- dims[2]
-                                     len <- length(unique(d[,cols]))
 
-                                     accRate <- len / rows
 
+                                     accRate <- numeric(rows)
+                                     for(i in seq_len(rows)){
+                                         len <- length(unique(d[1:i,cols]))
+                                         accRate[i] <- len / i
+                                     }
+
+                                     if(plotMe)
+                                         plot(accRate, type = "l")
                                      return(accRate)
                                  }
+                             },
+                             ## get the observation data
+                             getObservation = function(){
+                                 return(private$observation)
                              },
                              ##--------------------------
                              ## Change private attributes!

@@ -140,10 +140,7 @@ SimInfSimulator_real <- function(theta, extraArgs){
 
     ## load "model"
     if(is.null(model)) {
-        if(useSMHI)
-            load(paste(dataDir, "SISe_SMHI.rda", sep = ""))
-        else
-            load(paste(dataDir, "SISe.rda", sep = ""))
+        load(paste(dataDir, "SISe.rda", sep = ""))
     }
 
     ##model <- init_model_SISe_real(model = model, theta = theta, tspan = tspan, prevLevel = prevLevel, prevHerds = prevHerds)

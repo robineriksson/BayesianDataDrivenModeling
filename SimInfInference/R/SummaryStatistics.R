@@ -25,6 +25,7 @@ aggWilkinson <- function(data, extraArgs){
 
     aggSS.all <- agg(data, extraArgs)
     aggSS <- aggSS.all$data
+    name <- aggSS.all$name
     w <- aggSS.all$w
 
     sumSS.mat <- matrix(aggSS, ncol = length(data))
@@ -32,6 +33,9 @@ aggWilkinson <- function(data, extraArgs){
         sumSS.mat <- bootstrap(sumSS.mat, extraArgs)
     if(!useW)
         w <- NULL
+
+    rownames(sumSS.mat) <- name
+
     wilkSS <- apply(sumSS.mat, 2, wilkinsonStatistics, w = w)
     return(wilkSS)
 }
@@ -57,6 +61,7 @@ bootstrap <- function(mat,extraArgs){
         boot[row,] <- draw
     }
 
+
     return(boot)
 
 }
@@ -70,25 +75,20 @@ aplot <- function(mat1, mat2){
 
     plot(t,y0, type = "n")
 
-
+    ## the bootstrapped
     for(l in 1:dim(mat2)[2]) {
-        lines(t, mat2[,l], col = "blue")
+        lines(t, mat2[,l], col = scales::alpha(rgb(0,0,1), 0.005))
     }
+    ## mean of the bootstrap
+    lines(t, apply(mat2,1,mean), col = scales::alpha(rgb(0,0,1), 0.9))
 
-     for(l in 1:dim(mat1)[2]) {
-        lines(t, mat1[,l], col = "red")
+
+    ## the original
+    for(l in 1:dim(mat1)[2]) {
+        points(t, mat1[,l], pch = 16, col = scales::alpha(rgb(1,0,0), 0.1))
     }
-    ## df1 <- data.frame(t = t, mat1)
-    ## df1.m <- reshape::melt(df1, id.var = "t")
-
-    ## df2 <- data.frame(t = t, mat2)
-    ## df2.m <- reshape::melt(df2, id.var = "t")
-
-    ## p <- ggplot2::ggplot(df1.m, ggplot2::aes(x = t, y = value, col = "red")) +
-    ##     ggplot2::geom_line() +
-    ##     ggplot2::geom_line(data = df2.m, mapping = ggplot2::aes(x = t, y = value, colour = "blue"))
-
-    ## p
+    ## mean of the original
+    lines(t, apply(mat1,1,mean), col = scales::alpha(rgb(1,0,0), 0.9))
 
 
 
@@ -108,53 +108,46 @@ agg <- function(data, extraArgs){
 
     agged <- lapply(data, function(data){
         ## prepare timeseries vector
-        agged <- aggregateHelper(column = column, data = data, fun = fun, qtr = qtr)
-                   ##   function(column, data){
-                   ##       nodes <- unique(data$node)
-                   ##       if(qtr) {
-                   ##           ## aggregate into qtrs first
-                   ##           data.qtrs <- qtrStore(data, "time", column, logical)
-                   ##           data.mat <- matrix(data.qtrs[,column], ncol = length(nodes))
-                   ##       } else {
-                   ##           data.mat <- matrix(data[order(data$node),column], ncol = length(nodes))
-                   ##       }
-
-                   ##       data.fun <- apply(data.mat, 1, function(x){fun(x, na.rm = TRUE)})
-                   ##   }
-        ## , data = data)
+        agged <- aggregateHelper(column = column, data = data, fun = fun, qtr = qtr, logical = logical)
 
         agged.unlist <- unlist(agged)
         data.frame(data = agged.unlist[grep("data", names(agged.unlist))],
+                   name = agged.unlist[grep("name", names(agged.unlist))],
                    w = agged.unlist[grep("w", names(agged.unlist))])
     })
 
     ## same w for all
     w <- agged[[1]]$w
+    name <- agged[[1]]$name
     data <- c(sapply(agged, function(x){x$data}))
-    return(list(data = data, w = w))
+    return(list(data = data, name = name, w = w))
 }
 
 
 ##' A helper function
 ##' @export
-aggregateHelper <- function(column, data, fun, qtr){
+aggregateHelper <- function(column, data, fun, qtr, logical){
     nodes <- unique(data$node)
     if(qtr) {
         ## aggregate into qtrs first
-        data.qtrs <- qtrStore(data, "time", column)
+        data.qtrs <- qtrStore(data, "time", column, logical)
         data.mat <- matrix(data.qtrs[,column], ncol = length(nodes))
+        numb.mat <- matrix(data.qtrs[,"number"], ncol = length(nodes))
 
-        w <- computeWeights(data.mat, column)
+        w <- computeWeights(numb.mat)
 
     } else {
-
         data.mat <- matrix(data[order(data$node),column], ncol = length(nodes))
-        w <- rep(NULL, dim(data.mat)[2])
+        w <- rep(NA, dim(data.mat)[1])
     }
 
     data.fun <- apply(data.mat, 1, function(x){fun(x, na.rm = TRUE)})
 
-    return(list(data = data.fun, w = w))
+    if(qtr)
+        name <- unique(data.qtrs$time)
+    else
+        name <- unique(data$time)
+    return(list(data = data.fun, name = name, w = w))
 }
 
 
@@ -164,54 +157,52 @@ aggregateHelper <- function(column, data, fun, qtr){
 ##' @return a data.frame from the data in the list.
 ##' @export
 qtrStore <- function(indata, timeCol, dataCol, logical = FALSE){
-    ## potential outliers are removed!
-    ## qtr <- zoo::as.yearqtr(c("2009 Q4",
-    ##                          ##"2010 Q1",
-    ##                          "2010 Q2",
-    ##                          ##"2010 Q3",
-    ##                          ##"2010 Q4",
-    ##                          "2011 Q1", "2011 Q2", "2011 Q3", "2011 Q4",
-    ##                          ##"2012 Q1",
-    ##                          ##"2012 Q2",
-    ##                          "2012 Q3", "2012 Q4")
-    ##                        )
     qtr <- zoo::as.yearqtr(c("2009 Q4",
                              "2010 Q1", "2010 Q2", "2010 Q3", "2010 Q4",
                              "2011 Q1", "2011 Q2", "2011 Q3", "2011 Q4",
                              "2012 Q1", "2012 Q2", "2012 Q3", "2012 Q4")
                            )
 
-    nodes <- as.list(unique(indata$node))
-    df.list <- lapply(nodes, function(node){
-        dat <- indata[indata$node == node,]
-        dataqtr <- zoo::as.yearqtr(as.Date(dat[,timeCol], origin = "2005-01-01"))
-
-        outside <- which(!(qtr %in% dataqtr))
-        inside <- which(qtr %in% dataqtr)
-
-        status <- numeric(length(qtr))
-
-        for(i in inside){
-            k <- which(dataqtr == qtr[i])
-            ## if(dataCol == "I")
-            ##     status[i] <- mean(dat[k,dataCol])
-            ## else
-            if(logical)
-                status[i] <- as.logical(sum(dat[k,dataCol]))
-            else
-                status[i] <- sum(dat[k,dataCol])
-        }
-
-        status[outside] <- NA
-
-        df <- data.frame(node = rep(node, length(qtr)),
-                         time = qtr,
-                         sample = as.numeric(status))
-        names(df) <- c("node", timeCol, dataCol)
-        return(df)
-    })
+    ##nodes <- as.list(unique(indata$node))
+    nodes <- unique(indata$node)
+    df.list <- list()
+    for (node in nodes)
+        df.list[[length(df.list)+1]] <- qtrHelp(node, indata, timeCol, dataCol, logical, qtr)
 
     df <- data.table::rbindlist(df.list)
+    return(df)
+}
+
+qtrHelp <-  function(node, indata, timeCol, dataCol, logical = FALSE, qtr){
+    dat <- indata[indata$node == node,]
+    dataqtr <- zoo::as.yearqtr(as.Date(dat[,timeCol], origin = "2005-01-01"))
+
+    outside <- which(!(qtr %in% dataqtr))
+    inside <- which(qtr %in% dataqtr)
+
+    status <- numeric(length(qtr))
+    numMeas <- numeric(length(qtr))
+
+
+    for(i in inside){
+        k <- which(dataqtr == qtr[i])
+        ## if(dataCol == "I")
+        ##     status[i] <- mean(dat[k,dataCol])
+        ## else
+        if(logical)
+            status[i] <- as.logical(sum(dat[k,dataCol]))
+        else
+            status[i] <- sum(dat[k,dataCol])
+        numMeas[i] <- length(dat[k,dataCol])
+    }
+
+    status[outside] <- NA
+
+    df <- data.frame(node = rep(node, length(qtr)),
+                     time = qtr,
+                     sample = as.numeric(status),
+                     number = numMeas)
+    names(df) <- c("node", timeCol, dataCol, "number")
     return(df)
 }
 
@@ -224,40 +215,158 @@ wilkinsonStatistics <- function(vec, w = NULL){
         ac23 <- sapply(vec, function(x){acf(x, lag.max = 2, plot = FALSE)$acf[2:3]})
         SS <- c(ac23, sapply(vec,mean), sapply(vec,function(x){log(var(x) + 1)}))
     } else {
-        ac23 <- acf(vec, lag.max = 2, plot = FALSE)$acf[2:3]
         ## this one is not from Wilkinson
-        ##lcoef <- as.numeric(lm(vec~seq_len(length(vec)))$coef)
-        if(is.null(w))
-            SS <-  c(ac23, mean(vec), log(var(vec) + 1))
-        else {
-            ws <- weightedStat(vec,w)
-            SS <- c(ac23,ws)
+        if(is.null(w)) {
+            SS <- c()
+            ## mean statistics
+            ms <- halfyearMean(vec)
+            SS <- c(SS,ms)
+
+            ## fft statistics
+            w <- rep(1,length(vec))/length(vec)
+            fs <- fftStatistics(vec,w)
+            SS <- c(SS,fs)
+
+        } else {
+            SS <- c()
+
+            ## quarter statistics
+            qs <- qtrStatistics(vec,w)
+            SS <- c(SS,qs)
+
+            ## fft statistics
+            fs <- fftStatistics(vec,w,2)
+            SS <- c(SS,fs)
         }
     }
     return(SS)
+}
+
+##' Compute the two period means.
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @export
+halfyearMean <- function(vec){
+    ## we have two periods, t1 and t2.
+    times <- as.numeric(names(vec))
+    ## make into yearqtr
+    times.qt <- zoo::as.yearqtr(as.Date(times, origin = "2005-01-01"))
+
+    qvec <- c("Q1","Q2","Q3","Q4")
+    qmean <- numeric(length(qvec))
+    for (qi in seq_len(length(qvec))) {
+        q <- qvec[qi]
+        ## which are in quarter q?
+        in.q <- grep(q,times.qt)
+        vec.q <- vec[in.q]
+        ## compute sum
+        qmean[qi] <- mean(vec.q)
+    }
+
+    ## Q1 and Q2
+    mean.t1 <- (qmean[1] + qmean[2])/2
+    ## Q3 and Q4
+    mean.t2 <- (qmean[3] + qmean[4])/2
+
+    return(c(m1 = mean.t1, m2 = mean.t2))
+}
+
+##' Compute fft statistics (weighted)
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @param w the weights
+##' @param numCoef the number of coefficients to save.
+##' @export
+fftStatistics <- function(vec,w,numCoef=2) {
+    ## Weight the data
+    y <- vec*w
+
+    ## transform the data
+    y.fft <- fft(y)
+
+    ## find the numCoef largest coefficients (amplitudes)
+    ampl.uni <- unique(abs(y.fft))
+    ampl.ord <- order(ampl.uni,decreasing=TRUE)
+    ampl.larg <- ampl.uni[ampl.ord[1:numCoef]]
+
+    ## name the output
+    name <- character(numCoef)
+    for (i in 1:numCoef)
+        name[i] <- paste("fft", i, sep="")
+
+    names(ampl.larg) <- name
+
+    return(ampl.larg)
+}
+
+##' Compute mean and variance (weighted)
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @param w the weights
+##' @export
+qtrStatistics <- function(vec, w) {
+    qt <- zoo::as.yearqtr(as.numeric(names(vec)))
+
+    ## one for each quarter
+    valsMean <- numeric(4)
+    ##valsVar <- numeric(4)
+    qvec <- c("Q1","Q2","Q3","Q4")
+    for (qi in seq_len(length(qvec))) {
+        q <- qvec[qi]
+        ## which are in quarter q?
+        vec.q <- vec[grep(q,qt)]
+        w.q <- w[grep(q,qt)]
+        ## compute the weigted mean
+        valsMean[qi] <- Weighted.Desc.Stat::w.mean(vec.q,w.q)
+
+    }
+
+    names(valsMean) = sapply(qvec,function(x){paste("mean",x,sep="")})
+    return(valsMean)
+}
+
+
+##' Compute mean and variance (weighted)
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @param w the weights
+##' @export
+acStatistics <- function(vec,w) {
+                                        # weight the vector.
+    vec.w <- vec*w
+
+    # for looping
+    len <- length(vec)
+    val1 <- 0
+    val2 <- 0
+
+
+    for (i in seq(1,len-3,3)) {
+        ## rolling windows
+        ac23 <- acf(vec.w[i:(i+3)], lag.max = 2, plot = FALSE)$acf[c(2,3)]
+        val1 <- val1 + ac23[1]
+        val2 <- val2 + ac23[2]
+    }
+
+    ## compute the mean
+    ac2 <- val1/floor(len/3)
+    ac3 <- val2/floor(len/3)
+
+    return(c("ac2.r" = ac2, "ac3.r" = ac3))
+}
+
+##' Compute mean and variance (weighted)
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @param wmean the weighted mean
+##' @export
+countStatistics <- function(vec, wmean) {
+    aboveMean <- length(which(vec > wmean))
+    belowMean <- length(which(vec < wmean))
+    return(c("above" = aboveMean, "below" = belowMean))
 }
 
 
 ##' Compute the weights used in the weighted
 ##' @param data Observation data in matrix form
 ##' @export
-computeWeights <- function(data, column){
-    ## compute weightes
-    #if(column == "I") {
-        ## If we track #I we would have to write down the weights earlier. This
-        ## alternative method gives us a hinge on how the should be.
-        w <- apply(data, 1, function(x){length(x) - length(which(is.na(x)))})
-    #} else {
-    #    w <- apply(data, 1, function(x){
-    #        tab <- table(x)
-    #        sums <- 0
-    #        if("0" %in% names(tab))
-    #            sums <- tab[["0"]]
-    #        sums <- sums + sum(x, na.rm = TRUE)
-    #        return(sums)
-    #    })
-    #}
-
+computeWeights <- function(data){
+    w <- apply(data, 1, sum)
     ## normalize the weights
     w <- w/sum(w)
     return(w)
@@ -271,8 +380,35 @@ weightedStat <- function(vec, w){
     wm <- weighted.mean(vec, w)
     wvar <- weighted.var(vec, w)
 
-    return(c(wm, log(wvar + 1)))
+    ##return(c(wm, wvar))
+    ## mean
+    wm <- Weighted.Desc.Stat::w.mean(vec,w)
+    ## var
+    wvar <- Weighted.Desc.Stat::w.var(vec,w)
+    ## kurtosis
+    wk <- Weighted.Desc.Stat::w.kurtosis(vec,w)
+    ## skewness
+    ws <- Weighted.Desc.Stat::w.skewness(vec,w)
+
+    return(c("mean" = wm, "logvar" = log(wvar+1), "logkurt" = log(wk+2), "skew" = ws))
 }
+
+##' Compute mean and variance (weighted)
+##' @param vec summarized data in vector (as sum or mean from matrix)
+##' @param w the weights
+##' @export
+lagStat <- function(vec,w) {
+    vec.w <- vec*w
+    vec.0 <- vec.w[1:(length(vec)-1)]
+    vec.1 <- vec.w[2:length(vec)]
+
+    lagdiff <- vec.0 - vec.1
+
+    lagmean <- mean(lagdiff)
+    ##lagvar <- var(lagdiff)
+    return(c("lagmean" = lagmean))
+}
+
 
 ##' Weighted Variance
 ##' Credit to Dr. Gavin Simpson +44 (0)20 7679 0522

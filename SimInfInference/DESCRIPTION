@@ -29,4 +29,5 @@ Imports:
              grid,
              ggplot2,
              zoo,
-             Rcpp
+             Rcpp,
+             Weighted.Desc.Stat

@@ -36,7 +36,8 @@ generateBootstrap <- function(nStop = 14000, Mboot = 10) {
 ##' @param seed the seed used for the param. estimation
 ##' @param logParam observe the log-param space?
 ##' @param useW use weighted Summary Statistics
-##' @param useSMHI use SMHI based seasons.
+##' @param B the number of bootstrap replicates
+##' @param dataDir the directory holding the epi-modeldata
 bootSLreal <- function(nStop = 100, nSim = 10,
                        debug = FALSE, solver = "ssm",
                        binary = TRUE,
@@ -49,9 +50,9 @@ bootSLreal <- function(nStop = 100, nSim = 10,
                                      prev = 0.01928063),
                        threads = NULL,
                        bs = TRUE, seed = 0,
-                       logParam = FALSE, useW = TRUE, useSMHI = TRUE,
+                       logParam = FALSE, useW = TRUE,
                        EstName = "SLAM",
-                       S = 1e-3, trace = 10
+                       S = 1e-3, trace = 10, B = 100, dataDir
                        ) {
     ## estimator specific parameters
     if(EstName == "SLAM") {
@@ -68,16 +69,15 @@ bootSLreal <- function(nStop = 100, nSim = 10,
 
 
     ## filepaths
-    paths["observations"] <- paste(dataDir, "obsCleanDates.RData", sep="")
-    if(useSMHI)
-        paths["model"] <- paste(dataDir, "SISe_smhi.rda", sep="")
-    else
-        paths["model"] <- paste(dataDir, "SISe.rda", sep="")
-    paths["nobs"] <- paste(dataDir, "nObs.RData", sep="")
+    paths <- NULL
+    paths["obs"] <- paste(dataDir, "obs.rda", sep="")
+    paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nObs"] <- paste(dataDir, "nObs.RData", sep="")
 
 
 
-    load(paths["observations"]) ## loads: observation.dates
+    load(paths["obs"]) ## loads: observation.dates
+    obs$sample <- as.numeric(obs$status)
 
 
     ## We only to run the simulation for the maximum time that we have observations for.
@@ -87,10 +87,12 @@ bootSLreal <- function(nStop = 100, nSim = 10,
 
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
     realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
-    tinObs <- sort(unique(observation.dates$time))
+    tinObs <- sort(unique(obs$time))
     tObs <- as.numeric(tinObs) - (as.numeric(tinObs[1]) - tspan0[which(realDates == tinObs[1])])
-    observation.dates$numTime <- as.numeric(observation.dates$time) - as.numeric(tinObs[1]) +
+    obs$numTime <- as.numeric(obs$time) - as.numeric(tinObs[1]) +
         tspan0[which(realDates == tinObs[1])]
+
+    tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
@@ -100,7 +102,7 @@ bootSLreal <- function(nStop = 100, nSim = 10,
 
 
     ## load d (distance between the observed nodes)
-    load(paths["nobs"]) ## load: nObs
+    load(paths["nObs"]) ## load: nObs
 
 
 
@@ -109,12 +111,12 @@ bootSLreal <- function(nStop = 100, nSim = 10,
     if(binary){
         ##for parallell sampling
         column <- "sample"
-        logical <- TRUE
+
     } else {
         column <- "I"
-        logical <- FALSE
-    }
 
+    }
+    logical <- FALSE
 
     cl <- NULL
 
@@ -133,13 +135,19 @@ bootSLreal <- function(nStop = 100, nSim = 10,
                                runSeed = NULL, threads = NULL, solver = solver,
                                prevLevel = prevLevel, prevHerds = prevLevel, phiLevel = phiLevel,
                                u0 = u0, events = events, binary = binary, model = model,
-                               nSim = nSim, obsDates = observation.dates, useSMHI =  useSMHI)
+                               nSim = nSim, obsDates = obs, dataDir = dataDir)
 
     ## The Summary statistics
     SummaryStatistics <- aggWilkinson
 
-    extraArgsSummaryStatistics <- list(column = column, fun = mean, qtr = TRUE, bs = bs, B = nSim*20,
-                                       useW = useW, logical = logical)
+
+    ## The Summary statistics
+    SummaryStatistics <- aggWilkinson
+    if(is.null(B))
+        B <- nSim*20
+    fun = sum
+    extraArgsSummaryStatistics <- list(column = "sample", fun = fun, qtr = TRUE,  bs = bs,
+                                       B = B, useW = useW, logical = FALSE)
 
     ## The Proposal When only estimating upsilon.
     Proposal <- NULL
