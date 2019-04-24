@@ -19,18 +19,19 @@ library(SimInfInference)
 ##' @param obsSeed the seed used for the observation
 ##' @param seed the seed used for the param. estimation
 ##' @param logParam observe the log-param space?
-SLAMInference <- function(nStop = 100, nSim = 25,
+##' @param B the number of bootstrap samples to use
+SLAMInference <- function(nStop = 100, nSim = 10,
                           debug = FALSE, solver = "ssm", obsspan = 60,
                           binary = FALSE,
-                          Sw = NULL, S = 1e-3, e = NULL,
+                          Sw = NULL, S = 1e-4, e = NULL,
                           normalize = TRUE, pertubate = TRUE,
-                          thetaTrue = c(upsilon = 0.0075,
-                                        beta_t1 = 0.050,
-                                        beta_t2 = 0.085,
+                          thetaTrue = c(upsilon = 0.005,
+                                        beta_t1 = 0.025,
+                                        beta_t2 = 0.058,
                                         gamma = 0.1),
                           threads = NULL,
                           bs = TRUE, seed = 0,
-                          logParam = FALSE){
+                          logParam = FALSE, B = 100){
 
     if(!is.null(Sw))
         S <- Sw
@@ -72,8 +73,9 @@ SLAMInference <- function(nStop = 100, nSim = 25,
 
     ## The Summary statistics
     SummaryStatistics <- aggWilkinson
-    extraArgsSummaryStatistics <- list(column = column, fun = mean,
-                                       qtr = FALSE, bs = bs, B = 200*nSim,
+    fun = sum
+    extraArgsSummaryStatistics <- list(column = column, fun = fun,
+                                       qtr = FALSE, bs = bs, B = B,
                                        useW = FALSE, logical = logical)
 
     ## The Proposal When only estimating upsilon.
@@ -96,7 +98,7 @@ SLAMInference <- function(nStop = 100, nSim = 25,
 
     extraArgsEstimator <- list(parameters = names(thetaTrue),
                                nStop = nStop, nSim = nSim, debug = debug, theta0 = theta0,
-                               normalize = normalize, e = e, C0 = 1e-2, S = S, n0 = 1, accVec = NULL,
+                               normalize = normalize, e = e, C0 = 1e-9, S = S, n0 = 1, accVec = NULL,
                                reinit = FALSE, xbar = NULL, sigma = NULL, logParam = logParam)
 
 
@@ -200,16 +202,10 @@ pertubationSL <- function(thetalength = 21,
                                events = events, binary = binary, cl = NULL, nSim = nSim)
 
     ## The Summary statistics
-    ##SummaryStatistics <- SimInfStatistics_sandbox_full
     SummaryStatistics <- aggWilkinson
     extraArgsSummaryStatistics <- list(column = column, fun = mean,
                                        qtr = FALSE, bs = bs, B = 500,
                                        useW = FALSE, logical = logical)
-
-    ## SummaryStatistics <- aggregateTS
-    ## extraArgsSummaryStatistics <- list(column = column)
-    ##extraArgsSummaryStatistics <- list(nodes = nodes, numClusters = numClusters, SI = SI, span = SSspan,
-    ##betalag = betalag, betapower = betapower)
 
     ## The Proposal
     ## When only estimating upsilon
@@ -221,9 +217,9 @@ pertubationSL <- function(thetalength = 21,
     Estimator <- slGrid
 
     ## True parameter
-    thetaTrue = c(upsilon = 0.0075,
-                  beta_t1 = 0.050,
-                  beta_t2 = 0.085,
+    thetaTrue = c(upsilon = 0.005,
+                  beta_t1 = 0.025,
+                  beta_t2 = 0.058,
                   gamma = 0.1)
 
 

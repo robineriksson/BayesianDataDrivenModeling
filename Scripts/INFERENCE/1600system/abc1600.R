@@ -15,9 +15,9 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
                          method = "rejection", debug = FALSE,
                          solver = "ssm", obsspan = 60,
                          binary = FALSE, distance = euclid,
-                         thetaTrue = c(upsilon = 0.0075,
-                                       beta_t1 = 0.050,
-                                       beta_t2 = 0.085,
+                         thetaTrue = c(upsilon = 0.005,
+                                       beta_t1 = 0.025,
+                                       beta_t2 = 0.058,
                                        gamma = 0.1)
                          ){
     set.seed(0)
@@ -45,16 +45,22 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
     events <- SimInf::events_SISe()
     u0 <- SimInf::u0_SISe()
 
-    phiLevel = 0.5
-    prevLevel = NULL
+    phiLevel <- "local"
+    if("prev" %in% names(thetaTrue))
+        prevLevel <- NULL
+    else
+        prevLevel <- 0.1
+
     extraArgsSimulator <- list(tspan = tspan, tObs = tObs,
                                nObs = nObs, runSeed = NULL, threads = NULL,
                                includeTrue = FALSE, solver = solver, prevLevel = prevLevel,
                                prevHerds = prevLevel, phiLevel = phiLevel, u0 = u0,
                                events = events, binary = binary, cl = cl, nSim = 1)
+
+
     ## The Summary statistics
     SummaryStatistics <- aggWilkinson
-     extraArgsSummaryStatistics <- list(column = column, fun = mean,
+    extraArgsSummaryStatistics <- list(column = column, fun = mean,
                                         qtr = FALSE, bs = FALSE, B = NULL,
                                         useW = FALSE, logical = logical)
 
