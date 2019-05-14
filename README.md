@@ -1,4 +1,7 @@
 # Bayesian Data-driven epidemiological modeling
+### See the paper:
+Bayesian epidemiological modeling over high-resolution network data: opportunities for optimized control.
+
 ## The release code version
 
 ### About
