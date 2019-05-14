@@ -41,8 +41,10 @@ main <- function(N, PosteriorFilePath, dataDir) {
     ## thin out the data
     prev.2008t <- lapply(prev.2008, postThin)
 
-    ## create a ribbon, mean & sd
-    ribbon <- do.call("rbind", lapply(prev.2008t, postRibbon))
+    ## create a ribbon, with 95% CI
+    ribbon <- do.call("rbind", lapply(prev.2008t, function(X){
+    				postRibbon(X,useQuantile=TRUE,alpha=0.05)
+    				}))
     ## drop rownames
     rownames(ribbon) <- c()
 
@@ -118,14 +120,14 @@ statTest <- function(prev, logit = TRUE, B = 1000) {
 ##' @param filename the directory that holds the posterior
 ##' @param dataDir path to data directory
 ##' @return result
-runSimulator <- function(N, filename, dataDir) {
+runSimulator <- function(N, filename, dataDir, by = 100) {
     set.seed(0)
 
     ## load posterior
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],100)
+    rows <- seq(1,dims[1],by)
     cols <- seq_len(dims[2]-1)
 
     posterior.thinned <- posterior.All[rows,cols]
@@ -393,21 +395,55 @@ postThin <- function(df, n = 25) {
     return(postThin)
 }
 
-
-postRibbon <- function(df) {
-    dims <- dim(df)
+##' Extract the summaries desired for the ribbon plot
+##' @param df the full data to summarize
+##' @param useQuantile is we should compute the CI using quantiles or not
+##' @param alpha quantile parameter.
+postRibbon <- function(df, useQuantile = TRUE, alpha = 0.05) {
     dribbon = data.frame(time = df$time,
-                         ymean = apply(df[,2:dims[2]],1,mean),
-                         ysd = apply(df[,2:dims[2]],1,sd))
+                         ymean = apply(df[,-1],1,mean),
+                         ysd = apply(df[,-1],1,sd))
+
+    if(useQuantile) {
+        ## find the qt quantiles in the data
+
+        y <- apply(df[,-1],1, function(X){findQuantile(X,alpha=alpha)})
+        dribbon$yLower = y[1,]
+        dribbon$yUpper = y[2,]
+
+    }
 
     return(dribbon)
 
 }
+
+##' Find the quantiles of the data x for the Bayesian CI
+##' @param x the data to find the CI in
+##' @param alpha parameter for deciding the CI region.
+findQuantile <- function(x,alpha = 0.05) {
+    xs <- sort(x)
+    cpxx <- cumsum(xs) / sum(xs)
+    upper = 1-alpha/2
+    lower = 1-upper
+    low <- xs[which(cpxx >= lower)[1]]   # lower boundary
+    up <- xs[which(cpxx >= upper)[1]-1] # upper boundary
+
+    ## plot(density(xs))
+    ## abline(v=a,col="red")
+    ## abline(v=b,col="red")
+
+    return(c("low"=low,"up"=up))
+}
+
+
 ##' Plot the timeseries from the dataframe
 ##'
 ##' @param df lift the dataframes with prevalence from the result
+##' @param publish special formating the the published version
+##' @param numSD the number of SD to use in the ribbon.
+##' @param useQuantile if the quantiles should be used for the ribbon.
 ##' @return a plot handle
-plotSimulator <- function(df, publish = FALSE, numSD = 2) {
+plotSimulator <- function(df, publish = FALSE, numSD = 2, useQuantile=TRUE) {
 
     newnames <- character(4)
 
@@ -422,9 +458,15 @@ plotSimulator <- function(df, publish = FALSE, numSD = 2) {
     ## mean lines
 
     ## ribbon lines
-    gp <- gp + ggplot2::geom_ribbon(ggplot2::aes(x = time, ymin = ymean - numSD*ysd,
-                                                 ymax = ymean + numSD*ysd, fill = name),
-                                    alpha = 0.1)#, fill = colors[n])
+    if(useQuantile) {
+        gp <- gp + ggplot2::geom_ribbon(ggplot2::aes(x = time, ymin = yLower,
+                                                     ymax = yUpper, fill = name),
+                                        alpha = 0.1)#, fill = colors[n])
+    }
+    else
+        gp <- gp + ggplot2::geom_ribbon(ggplot2::aes(x = time, ymin = ymean - numSD*ysd,
+                                                     ymax = ymean + numSD*ysd, fill = name),
+                                        alpha = 0.1)#, fill = colors[n])
 
     ## get end for legend
     d_end <- df[which(df$t == tail(sort(df$t),1)),]

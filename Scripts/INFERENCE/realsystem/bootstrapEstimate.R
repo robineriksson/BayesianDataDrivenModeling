@@ -9,11 +9,12 @@ generateBootstrap <- function(nStop = 14000, Mboot = 10) {
 	## generate the bootstrap samples
 	boots = list()
 	for (s in 1:Mboot) {
-		infe <- bootSLreal(nStop, seed = s)
-		boots[[length(boots)+1]] <- infe
+		sboot_bin <- bootSLreal(nStop, seed = s)
+		boots[[length(boots)+1]] <- sboot_bin
 	}
-
-	b = estBias(Mboot, 1000, 120)
+	
+	## estimate the bias using the list of runs.
+	b = estBias(boots, Mboot, 1000, 120)
 	return(b)
 }
 
@@ -42,12 +43,12 @@ bootSLreal <- function(nStop = 100, nSim = 10,
                        debug = FALSE, solver = "ssm",
                        binary = TRUE,
                        normalize = TRUE,
-                       thetaTrue = c(upsilon = 0.01748061,
-                                     beta_t1 = 0.15210166,
-                                     beta_t2 = 0.13849330,
-                                     beta_t3 = 0.14714038,
-                                     gamma = 0.10302909,
-                                     prev = 0.01928063),
+                       thetaTrue = c(upsilon = 0.01497481,
+                   					 beta_t1 = 0.13989299,
+                   					 beta_t2 = 0.13207170,
+                   					 beta_t3 = 0.15109628,
+                   					 gamma = 0.09418470,
+                   					 prev = 0.02608765),
                        threads = NULL,
                        bs = TRUE, seed = 0,
                        logParam = FALSE, useW = TRUE,
@@ -95,11 +96,6 @@ bootSLreal <- function(nStop = 100, nSim = 10,
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
 
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
-
-    ## old
-    ##tObs <- seq(182+obsspan, 3287, obsspan) ## what nodes we observe
-    ##
-
 
     ## load d (distance between the observed nodes)
     load(paths["nObs"]) ## load: nObs
@@ -219,27 +215,34 @@ contInference <- function(infe, nStop = 100){
     return(infe)
 }
 
-estBias <- function(B = 5, burnin = 200, thinning = 20) {
-    thetaTrue <- c(upsilon = 0.01748061,
-                   beta_t1 = 0.15210166,
-                   beta_t2 = 0.13849330,
-                   beta_t3 = 0.14714038,
-                   gamma = 0.10302909,
-                   prev = 0.01928063)
+##' Estimate the bias from a list of inference runs.
+##' @param infe.list a list of inference runs
+##' @param B  the nubmer of inference runs to inclue
+##' @param burnin what burnin to use for the Markov Chain
+##' @param thinning what thinning to use for the Markov Chain
+estBias <- function(infe.list, B = 10, burnin = 1000, thinning = 100) {
+	thetaTrue <- c(upsilon = 0.01497481,
+                   beta_t1 = 0.13989299,
+                   beta_t2 = 0.13207170,
+                   beta_t3 = 0.15109628,
+                   gamma = 0.09418470,
+                   prev = 0.02608765)
 
-    dirname = "~/Gits/BPD/R/INFERENCE/realsystem/output/slam/batchRun/boot/sbin/"
-    filename <- paste(dirname, "boot_seed_1.RData", sep = "")
-    load(filename)
+	sboot_bin <- infe.list[[1]]
     s <- as.matrix(sboot_bin$getPosterior())
     sdim <- dim(s)
     s <- s[seq(burnin, sdim[1], thinning),]
 
     thetaVec <- array(0, dim = c(dim(s), B))
     thetaVec[,,1] <- s
-
+	
+	## error check.
+	if(B > length(infe.list)
+		B <- length(infe.list)
+	
+	## loop for clarity.
     for (seed in 2:B) {
-        filename <- paste(dirname, "boot_seed_", seed, ".RData", sep = "")
-        load(filename)
+		sboot_bin <- infe.list[[seed]]
         s <- as.matrix(sboot_bin$getPosterior())
         s <- s[seq(burnin, sdim[1], thinning),]
         thetaVec[,,seed] <- s

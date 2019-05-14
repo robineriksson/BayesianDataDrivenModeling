@@ -16,11 +16,13 @@ main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
                  PosteriorFilePath, dataDir) {
     r <- runSimulation(nodes = nodes, N = N, extend = extend,
                        filename = PosteriorFilePath, dataDir = dataDir)
+                       
+    qq <- apply(prev, 2, function(x){findQuantile(x,0.05)})
     prev <- r$prev
     means <- apply(prev, 2, mean)
     sds <- apply(prev, 2, sd)
 
-    df <- data.frame(mean = means, sd = sds)
+    df <- data.frame(mean = means, sd = sds, qq.low = qq["low",], qq.up = qq["up",])
 
     credible <- apply(df,1,function(x,CI){x[1] + CI*c(-x[2], x[2])}, CI = CI)
     df$low <- credible[1,]
@@ -28,6 +30,36 @@ main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
 
     rownames(df) <- colnames(prev)
     return(list(df = df, r = r))
+}
+
+##' Find the Credible Interval (CI)
+##' @param x the data to look at
+##' @param alpha Classic CI parameter.
+findQuantile <- function(x,alpha = 0.05) {
+    xs <- sort(x)
+    cpxx <- cumsum(xs) / sum(xs)
+    upper = 1-alpha/2
+    lower = 1-upper
+    low <- xs[which(cpxx >= lower)[1]]   # lower boundary
+    up <- xs[which(cpxx >= upper)[1]-1] # upper boundary
+
+    return(c("low"=low,"up"=up))
+}
+
+
+loadPosterior <- function(filename, N, by = 100) {
+    ## load posterior
+    load(filename)
+    posterior.All <- sobs$getPosterior()
+    dims <- dim(posterior.All)
+    rows <- seq(1,dims[1],by)
+    cols <- seq_len(dims[2]-1)
+    posterior.thinned <- posterior.All[rows,cols]
+
+    ## if we do 100 draws and do not use replace,
+    ## then we're using all the accepted parameter pairs
+    theta.post <- posterior.thinned[sample(seq_len(length(rows)), N, replace = T),]
+    return(theta.post)
 }
 
 
@@ -40,25 +72,15 @@ main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
 ##' @param filename path to filename
 ##' @param dataDir path to data directory
 runSimulation <- function(nodes = 250, N = 100, extend = NULL,
-                          filename, dataDir) {
+                          filename, dataDir {
     set.seed(0)
 
     ## load posterior
-    load(filename)
-    posterior.All <- sobs$getPosterior()
-    dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],100)
-    cols <- seq_len(dims[2]-1)
-
-    posterior.thinned <- posterior.All[rows,cols]
-
-    ## if we do 100 draws and do not use replace, then we're using all the accepted parameter pairs
-    theta.post <- posterior.thinned[sample(seq_len(length(rows)), N, replace = T),]
-
+    theta.post <- loadPosterior(filename, N)
 
     ## define tspan vector
     sise_path <- paste(dataDir, "SISe.rda", sep = "")
-    load(sise__path) ## load model
+    load(sise_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -174,6 +196,7 @@ runSimulation <- function(nodes = 250, N = 100, extend = NULL,
     return(list(prev = prev.out, tspan.record = tspan.record, det.mean = det.mean))
 }
 
+##' Get the size of the population in the node
 getNodeSize <- function(res, prev.sel, tspan.record, nodes.selected) {
     ## ## size of the population at the node and time
     u <- SimInf::trajectory(res, c("S","I"),as.is=T, node = unlist(c(nodes.selected)))
@@ -195,6 +218,8 @@ getNodeSize <- function(res, prev.sel, tspan.record, nodes.selected) {
     return(prev.sel)
 }
 
+##' Find and randomly select node that are active
+##' in the given timeframe.
 sampleNodes <- function(eventList, N, extend) {
     ## for each yearset, select N nodes!
     if(is.null(extend))
@@ -214,7 +239,7 @@ sampleNodes <- function(eventList, N, extend) {
     return(nodes)
 }
 
-
+##' Artifically swab (test for infection) the nodes
 swabNodes <- function(nodeData) {
     swab <- apply(nodeData, 1, function(x){
         sum(rbinom(n = x["n"], size = 1, prob = x["prevalence"]))
@@ -222,6 +247,7 @@ swabNodes <- function(nodeData) {
     return(swab)
 }
 
+##' Determine the number of "Inf" in the node.
 numberOfInfNodes <- function(nodeData, time) {
     years = unique(nodeData$year)
     detected <- numeric(length(years)*4)
@@ -241,6 +267,7 @@ numberOfInfNodes <- function(nodeData, time) {
     return(det.mean)
 }
 
+##' Evaluate the swab test. Does is test positive or negative?
 evalSwab <- function(nodeData) {
     years <- unique(nodeData$year)
     evaled <- c()
@@ -260,7 +287,7 @@ evalSwab <- function(nodeData) {
     return(evaled)
 }
 
-
+##' Set the size of the node.
 setsize <- function(result, nodes, tspan.record, prev) {
     u <- SimInf::trajectory(result, c("S","I"),as.is=T, node = nodes)
     u.sel <- u[, as.character(tspan.record)]
@@ -288,21 +315,11 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
     set.seed(0)
 
     ## load posterior
-    load(filename)
-    posterior.All <- sobs$getPosterior()
-    dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],100)
-    cols <- seq_len(dims[2]-1)
-
-    posterior.thinned <- posterior.All[rows,cols]
-
-    ## if we do 100 draws and do not use replace, then we're using all the accepted parameter pairs
-    theta.post <- posterior.thinned[sample(seq_len(length(rows)), N, replace = T),]
-
+    theta.post <- loadPosterior(filename, N)
 
     ## define tspan vector
     sise_path <- paste(dataDir, "SISe.rda", sep = "")
-    load(sise__path) ## load model
+    load(sise_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
     ## 0. Define date A and B, find all nodes that have exit events on both dates.
@@ -427,4 +444,149 @@ plotit <- function(res, size = 14) {
         theme_Publication(size)
 
     return(p)
+}
+
+##' Code that runs and check the node prevalence for the 126 
+##' herds and checks the node prevalence for simulation and observation.
+##' @param runs the number of iterations to use for the "posterior"
+##' @param filename name of the posterior file
+##' @param dataDir the directory holding the observation/model data.
+n126nodePrevalence <- function(runs = 1, filename, dataDir) {
+    set.seed(0)
+
+    ## draw samples from the posterior
+    theta.post <- loadPosterior(filename, runs)
+
+  	## what nodes
+    nObs_path <- paste(dataDir, "nObs.rda", sep = "")
+    load(nObs_path) ## load: nObs
+
+    ## same for all runs
+    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    load(sise_path) ## load model
+
+
+	obs_path <- paste(dataDir, "obs.rda", sep = "")
+    load(obs_path) ## load: obs
+    obs$sample <- as.numeric(obs$status)
+
+
+
+
+    ## ** FOR OUTPUT
+    tab.obs <- numPos(table(obs$sample))
+
+    obs.qtr <- qtrStore(as.data.frame(obs), "time", "sample")
+
+    tab.obs.qtr <- numPos(table(obs.qtr$sample))
+    wm.obs <- meanNodePrev(obs.qtr)
+    ## **
+
+
+    ##p1 <- plotAggregate2(obs, fun = fun)
+    ##t <- 1:length(p1)
+
+    tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
+    realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
+    tinObs <- sort(unique(obs$time))
+    tObs <- as.numeric(tinObs) - (as.numeric(tinObs[1]) - tspan0[which(realDates == tinObs[1])])
+    obs$numTime <- as.numeric(obs$time) - as.numeric(tinObs[1]) +
+        tspan0[which(realDates == tinObs[1])]
+
+    tspan <- tspan0[-which(realDates > tail(tinObs,1))]
+
+    tab <- data.frame(matrix(0, ncol = 3, nrow = runs))
+    names(tab) <- c("neg", "pos", "prop")
+
+    tab.qtr <- tab
+
+    wm <- numeric(runs)
+
+
+    ## p <- data.frame(matrix(nrow=length(p1),ncol=runs))
+    ## colnames(p) <- seq_len(runs)
+    ## do simulation for all samples.
+    ##ssResObs <- list()
+    pb <- pbapply::timerProgressBar(width = 50)
+    for(k in 1:runs) {
+        tt <- as.numeric(theta.post[k,])
+        names(tt) <- names(theta.post)
+        theta <- setTheta(tt)
+
+        extraArgs <- list(tspan = tspan, tObs = tObs, nObs = nObs,
+                                   runSeed = NULL, threads = NULL, solver = "ssm",
+                                   prevLevel = NULL, prevHerds = NULL, phiLevel = "local",
+                                   u0 = NULL, events = NULL, binary = TRUE, model = model,
+                                   nSim = 1, obsDates = obs)
+
+        res <- SimInfSimulator_real(theta, extraArgs)[[1]]
+
+        ## ** FOR OUTPUT
+        tab[k, ] <- numPos(table(res$sample))
+
+        res.qtr <- qtrStore(res, "time", "sample")
+        tab.qtr[k, ] <- numPos(table(res.qtr$sample))
+
+        wm[k] <- meanNodePrev(res.qtr)
+
+        pbapply::setTimerProgressBar(pb, k/runs)
+    }
+    close(pb)
+
+    ## summarizing the data
+    mean.all <- mean(tab$prop)
+    sd.all <- sd(tab$prop)
+
+    qt.all <- findQuantile(tab$prop,0.05)
+
+    mean.qtr <- mean(tab.qtr$prop)
+    sd.qtr <- sd(tab.qtr$prop)
+    qt.qtr <- findQuantile(tab.qtr$prop,0.05)
+
+    df <- data.frame(mean = c(mean.all, mean.qtr),
+                     sd = c(sd.all, sd.qtr),
+                     qt.low = c(qt.all["low"], qt.qtr["low"]),
+                     qt.up = c(qt.all["up"], qt.qtr["up"]))
+
+    rownames(df) <- c("all", "qtr")
+
+    qt.w <- findQuantile(wm)
+    df.w <- data.frame(obs = wm.obs, mean = mean(wm), sd = sd(wm), qtLow = qt.w["low"], qtUp = qt.w["up"])
+
+    ##
+
+
+    return(list(obs = tab.obs,  obs.qtr = tab.obs.qtr, tab = tab, tab.qtr = tab.qtr,
+                df = df, df.w = df.w))
+}
+
+##' number of positive nodes
+numPos <- function(tab) {
+    neg <- tab[[1]]
+    pos <- sum(tab[-1])
+
+    return(data.frame(neg = neg, pos = pos, prop = pos/(pos + neg)))
+}
+
+##' Find the average node prevalence.
+meanNodePrev <- function(res) {
+    ## transform into a matrix
+    m <- matrix(c(res$sample), nrow = length(unique(res$time)))
+
+    ## compute the node prevalence at each quarter
+    nprev <- apply(m, 1, function(x){
+        tab <- table(x)
+        pos <- sum(tab[-1])
+        neg <- tab[[1]]
+        nprev <- pos / (pos + neg)
+    })
+
+    ## compte the weights for each quarter measure
+    res.n <- matrix(res$number, nrow = length(unique(res$time)))
+
+    w <- computeWeights(res.n)
+
+    ## compute the (weighted) temporal mean
+    wm <- weighted.mean(nprev, w)
+    return(wm)
 }

@@ -170,3 +170,127 @@ contInference <- function(infe, nStop = 100){
 
     return(infe)
 }
+
+##' 1D marginal pertubation exploration
+##' @param nSim the number of simulations used for each SL
+##' @param pert how big the pertubation should be
+##' @param thetalength how many points should be explored
+##' @param solver what stochastic numerical solver to use
+##' @param bs if bootstrap should be used
+##' @param multiSS how many times SL should be evaluated at each point
+##' @param thetaTrue the centroid to start from
+##' @param useW if weighted samples should be used
+##' @param allDim if we should do 1D or 2D marginal exploration
+##' @param B how many bootstrap samples to use.
+##' @param dataDir the directory holding the observation/model data
+pertubationSL <- function(nSim = 20, pert = c(0.8,1.2),
+                          thetalength = 11,
+                          solver = "ssm",
+                          bs = TRUE,
+                          multiSS = 1,
+                          thetaTrue = c(upsilon = 0.01563841,
+                                        beta_t1 = 0.14309175,
+                                        beta_t2 = 0.13366590,
+                                        beta_t3 = 0.15541914,
+                                        gamma = 0.09720055,
+                                        prev = 0.02537256),
+                          useW = TRUE,
+                          allDim = FALSE,
+                          B = NULL,
+                          dataDir
+                          ){
+
+    paths <- NULL
+    paths["obs"] <- paste(dataDir, "obs.rda", sep="")
+    paths["model"] <- paste(dataDir, "SISe.rda", sep="")
+    paths["nObs"] <- paste(dataDir, "nObs.RData", sep="")
+
+    set.seed(0)
+    ## set up simulator
+    load(paths["obs"]) ## loads: obs
+    obs$sample <- as.numeric(obs$status)
+
+    load(paths["model"]) ## loads: model
+
+    tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
+    realDates <- zoo::as.Date(tspan0, origin = "2005-01-01")#"2007-07-01")
+    tinObs <- sort(unique(obs$time))
+    tObs <- as.numeric(tinObs) - (as.numeric(tinObs[1]) - tspan0[which(realDates == tinObs[1])])
+    obs$numTime <- as.numeric(obs$time) - as.numeric(tinObs[1]) +
+        tspan0[which(realDates == tinObs[1])]
+
+    tspan <- tspan0[-which(realDates > tail(tinObs,1))]
+
+    ## load names of the observed nodes -> nObs
+    load(paths["nObs"]) ## load: nObs
+
+
+    ## The Simulator.
+    Simulator <- SimInfSimulator_real
+
+    ## load data that is included the SimInf package
+    events <- NULL
+    u0 <- NULL
+
+    phiLevel <- "local"
+    if("prev" %in% names(thetaTrue))
+        prevLevel = NULL
+    else
+        prevLevel = 0.02
+
+
+    extraArgsSimulator <- list(tspan = tspan, tObs = tObs, nObs = nObs,
+                               runSeed = NULL, threads = NULL, solver = solver,
+                               prevLevel = prevLevel, prevHerds = prevLevel, phiLevel = phiLevel,
+                               u0 = u0, events = events, binary = TRUE, model = model,
+                               nSim = nSim, obsDates = obs)
+
+    ## The Summary statistics
+    SummaryStatistics <- aggWilkinson
+
+
+    if(is.null(B))
+        B <- nSim*20
+
+    fun <- sum
+    extraArgsSummaryStatistics <- list(column = "sample", fun = fun, qtr = TRUE,  bs = bs,
+                                       B = B, useW = useW, logical = FALSE)
+
+    ## The Proposal
+    ## When only estimating upsilon
+    Proposal <- NULL
+    extraArgsProposal <- NULL
+
+
+    ## The Estimator
+    Estimator <- slGrid
+
+
+
+
+    extraArgsEstimator <- list(theta0 = thetaTrue,
+                               pert = pert,
+                               thetalength = thetalength,
+                               allDim = allDim,
+                               logParam = FALSE,
+                               nSim = nSim,
+                               normalize = TRUE,
+                               multiSS = multiSS)
+
+    ## Create object!
+    infe <- Inference$new(Simulator = Simulator, SummaryStatistics = SummaryStatistics,
+                          Proposal = Proposal, Estimator = Estimator,
+                          extraArgsSimulator = extraArgsSimulator,
+                          extraArgsSummaryStatistics = extraArgsSummaryStatistics,
+                          extraArgsEstimator = extraArgsEstimator,
+                          extraArgsProposal = extraArgsProposal)
+
+
+    ## make observation
+    infe$setObservation(list(obs))
+
+    ## run estimation
+    infe$runEstimation()
+
+    return(infe)
+}

@@ -157,7 +157,7 @@ contInference <- function(infe, nStop = 100){
 ##' @param bs bootstrap or not
 ##' @param multiSS how many times to evaluate the point.
 pertubationSL <- function(thetalength = 21,
-                          nSim = 20, pert = c(0.9,1.1),
+                          nSim = 20, pert = c(0.8,1.2),
                           solver = "ssm", binary = FALSE,
                           obsspan = 60,
                           bs = TRUE,

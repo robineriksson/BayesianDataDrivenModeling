@@ -2,37 +2,6 @@ library(SimInfInference)
 library(SimInf)
 library(ggplot2)
 
-## % *** intro here, look back to the 1st paragraph of the abstract
-## % (``public security'')
-
-## % *** something about how bad EHEC/VTEC is to the public (see siminf1)
-
-## % sample N = 100 parameters
-## % simulate independent simulations for, e.g., 10 years, taking
-## % measurements only
-## % at the final 5 years or so
-## % RECORD the nodes: phi and/or the highest P = I/(S+I)
-
-## % AFTER the simulation, RANK the nodes and find the 10--100 or so most
-## % likely to be detected (see below)
-
-## % RE-RUN with this information and add ~2--3 other sets of ``good
-## % nodes'' {e.g., in-degree, #individuals, random}
-
-## % discuss: formulate as a hypothesis (e.g., "set 1 is best at
-## % detecting"), and a null hypothesis ("there is no difference")
-
-## % *** Fig here: probability of detection vs. time (so no statistical
-## % test)
-
-## % Note: probability of detection at time t = P_detect(t) =
-## % 1-prod_{node i in set} (1-P_i(t)), P_i(t) = sigmoid(phi) or
-## % sigmoid(P), where sigmoid(.) goes from 0 to 1 and is controlled by a
-## % cut-off c and a sharpness parameter eps. The change of value goes
-## % from 0 to 1 around the value c, and it does so in an interval of
-## % length about eps.
-
-
 ##' Run the detection experient found in the paper
 ##' @param N the number of posterior samples
 ##' @param M the number of top nodes to pick
@@ -73,7 +42,7 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Rank nodes")
     topNodes <- rankNodes(run, M, rankP = rankP)
-    nodeSelection <- data.frame("Simulation" = topNodes, networkNodes)
+    nodeSelection <- data.frame("Observation" = topNodes, networkNodes)
 
 
 
@@ -100,12 +69,12 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
 
 ##' Draw parameters from posterior
 ##' @param N number of draws
-drawPosterior <- function(N, filename) {
+drawPosterior <- function(N, filename, by = 100) {
     ## load posterior
     load(filename)
     posterior.All <- sobs$getPosterior()
     dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],100)
+    rows <- seq(1,dims[1],by)
     cols <- seq_len(dims[2]-1)
 
     posterior.thinned <- posterior.All[rows,cols]
@@ -222,18 +191,16 @@ rankNodes <- function(run, M = 10, rankP = FALSE, na.rm = FALSE) {
     rowsMax <- maxOrder[1:M]
     ## rows100 <- maxOrder[101:(100+M)]
     ## rows1000 <- maxOrder[1001:(1000+M)]
-    return("Simulation" = rowsMax)
+    return("Observation" = rowsMax)
     ##return(data.frame(rowsMax, rows100 = rows100, rows1000 = rows1000))
 }
 
 ##' Evaluate the network trafic for possible candidates
 ##' @param M number of selected nodes
 ##' @param dataDir the path to the drectory that holds the data
-networkEval <- function(M = 10, dataDir) {
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
-    load(sise_path) ## load model
+networkEval <- function(M = 10, includeEEevents = TRUE) {
+    load("~/Gits/BPD/R/DATA/secret2/SISe.rda") ## loads: model <- with SMHI
     events <- model@events
-
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -242,19 +209,33 @@ networkEval <- function(M = 10, dataDir) {
 
     ## here, only count external transfers in indegree
     ## which events are out?
-    send <- which(events@event == 3)
-    #3 sent to node dest[send]
-    send.node = events@dest[send]
-    send.n = events@n[send]
-    send.num <- numeric(sum(send.n)) ## put all in row for easy table!
+    ## 1: enters, 3: external transfers
+    inNode.sel <- which(events@event == 3)
+
+    ##3 sent to node dest[send]
+
+    ## what node to look at
+    inNode.node = events@dest[inNode.sel]
+
+    if(includeEEevents) {
+        inNode.enter <- which(events@event == 1)
+        inNode.node <- c(inNode.node, events@node[inNode.enter])
+        inNode.sel <- c(inNode.sel, inNode.enter)
+    }
+
+    ## how many ind. where recieved
+    inNode.n = events@n[inNode.sel]
+
+    ## empty vector to fill
+    inNode.num <- numeric(sum(inNode.n)) ## put all in row for easy table!
     last <- 1
-    for(i in 1:length(send.n)) {
-        num <- send.n[i]
-        send.num[last:(last+num)] <- send.node[i]
+    for(i in 1:length(inNode.n)) {
+        num <- inNode.n[i]
+        inNode.num[last:(last+num)] <- inNode.node[i]
         last <- last+num
     }
-    send.table <- table(send.num)
-    indegree <- head(order(send.table, decreasing = TRUE), M)
+    inNode.table <- table(inNode.num)
+    indegree <- head(order(inNode.table, decreasing = TRUE), M)
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## outdegree
@@ -262,22 +243,28 @@ networkEval <- function(M = 10, dataDir) {
 
     ## here, only count external transfers in outdegree
     ## sent from node[send]
-    send.node = events@node[send]
-    send.n = events@n[send]
-    send.num <- numeric(sum(send.n)) ## put all in row for easy table!
+    ## 0: exits, 3: external transfers
+    if(includeEEevents)
+        outNode <- which(events@event == 3 | events@event == 0)
+    else
+        outNode <- which(events@event == 3)
+
+    outNode.node = events@node[outNode]
+    outNode.n = events@n[outNode]
+    outNode.num <- numeric(sum(outNode.n)) ## put all in row for easy table!
     last <- 1
-    for(i in 1:length(send.n)) {
-        num <- send.n[i]
-        send.num[last:(last+num)] <- send.node[i]
+    for(i in 1:length(outNode.n)) {
+        num <- outNode.n[i]
+        outNode.num[last:(last+num)] <- outNode.node[i]
         last <- last+num
     }
-    send.table <- table(send.num)
-    outdegree <- head(order(send.table, decreasing = TRUE), M)
+    outNode.table <- table(outNode.num)
+    outdegree <- head(order(outNode.table, decreasing = TRUE), M)
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## largest number of animals (u0)
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    u0 <- model@u0["I",] ## the animals are all in I compartment
+    u0 <- model@u0["S",] ## the animals are all in I compartment
     maxAnim <- head(order(u0, decreasing = TRUE), M)
 
 
@@ -297,6 +284,7 @@ networkEval <- function(M = 10, dataDir) {
                          "Random" = randomNodes)
     return(output)
 }
+
 
 
 plotReRun <- function(run, nodeSelection, na.rm = FALSE, rankP = FALSE) {
@@ -372,13 +360,13 @@ plotReRun <- function(run, nodeSelection, na.rm = FALSE, rankP = FALSE) {
 ##' @param p value to be evaluated by the function
 ##' @param p0 the x-value of the sigmoid's midpoint
 ##' @param k the logistic growth rate
-sigmoid <- function(p, p0 = 0.3, k = 20) {
+sigmoid <- function(p, p0 = 0.375, k = 15) {
     F = 1 / ( 1 + exp(-k*(p-p0)))
     return(F)
 }
 
 
-plotSig <- function(p0 = 0.3, k = 20) {
+plotSig <- function(p0 = 0.375, k = 15) {
     x <- seq(0,1,length.out = 1e6)
     s <- sigmoid(x, p0 = p0, k = k)
 
@@ -407,11 +395,32 @@ plotSig <- function(p0 = 0.3, k = 20) {
 
 }
 
+##' Find the quantile in the Bayesian distribution
+##' @param x The observed data
+##' @param alpha with what certainty should be find the percentiles?
+findQuantile <- function(x,alpha = 0.05) {
+    xs <- sort(x)
+    cpxx <- cumsum(xs) / sum(xs)
+    upper = 1-alpha/2
+    lower = 1-upper
+    low <- xs[which(cpxx >= lower)[1]]   # lower boundary
+    up <- xs[which(cpxx >= upper)[1]-1] # upper boundary
+
+    ## plot(density(xs))
+    ## abline(v=a,col="red")
+    ## abline(v=b,col="red")
+
+    return(c("low"=low,"up"=up))
+}
+
+
 ##' probability of detection at time t = P_detect(t) =
 ##' 1-prod_{node i in set} (1-P_i(t)), P_i(t) = sigmoid(phi) or
 ##' sigmoid(P),
 ##' @param p matrix for node set
-detectionProb <- function(run, nodeSelection, rankP = FALSE, na.rm = FALSE, cutLevel = 1, numSD = 1, alt1 = TRUE) {
+detectionProb <- function(run, nodeSelection, rankP = FALSE, 
+			na.rm = FALSE, cutLevel = 1, numSD = 1, alt1 = TRUE,
+			useQuantile = TRUE, alpha = 0.05) {
     if(rankP)
         value <- run$prev0
     else {
@@ -443,8 +452,17 @@ detectionProb <- function(run, nodeSelection, rankP = FALSE, na.rm = FALSE, cutL
 
         allProbs$mean <- c(t(apply(prob, c(1,2), mean)))
         probSD <- c(t(apply(prob, c(1,2), sd)))
-        allProbs$max <- allProbs$mean + numSD*probSD
-        allProbs$min <- allProbs$mean - numSD*probSD
+
+		if(useQuantile) {
+            ## find the qt quantiles in the data
+            y <- apply(prob,c(1,2), function(X){findQuantile(X,alpha=alpha)})
+
+            allProbs$min = c(t(y[1,,]))
+            allProbs$max = c(t(y[2,,]))
+        }
+
+        allProbs$max.sd <- allProbs$mean + numSD*probSD
+        allProbs$min.sd <- allProbs$mean - numSD*probSD
 
         allProbs$name <- rep(names(nodeSelection), each = dims[2])
 
