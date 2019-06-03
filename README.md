@@ -25,9 +25,9 @@ We are able to with the code and data in this repository to first
 approximate the posterior of the STEC endemic in the cattle population
 
 ![Visualization of the modeling problem](/Figures/introSingle.png)
-![Approximated posterior distribution](https://github.com/robineriksson/BayesianDataDrivenModeling/tree/master/Figures/realMultiPosterior.png)
-![Bayesian modeling of detection experiments](https://github.com/robineriksson/BayesianDataDrivenModeling/tree/master/Figures/detection.png)
-![Bayesian modeling of intervention experiments](https://github.com/robineriksson/BayesianDataDrivenModeling/tree/master/Figures/intervention.png)
+![Approximated posterior distribution](/Figures/realMultiPosterior.png)
+![Bayesian modeling of detection experiments](/Figures/detection.png)
+![Bayesian modeling of intervention experiments](/Figures/intervention.png)
 
 
 ### Structure
