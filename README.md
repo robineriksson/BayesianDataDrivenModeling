@@ -30,28 +30,32 @@ a a national transport network with other herds. In the timeframe of
 bacterial sampling, the herds are (c) sampled for the bacteria were 1
 indicates that the herd was found infected while 0 is a negative
 result.
-<img src="/Figures/introSingle.png" width=600 class="center">
-
+<p align="center">
+<img src="/Figures/introSingle.png" width=600>
+</p>
 On the network, we have observational data, and using SLAM (an
 approximate Bayesian computation) approach to approximate the
 parameter posterior (green). We then later affirm the found posterior
 by re-iterating the same procedure with synthetic data generated from
 the parameter posterior mean (blue & orange)
-<img src="/Figures/realMultiPosterior.png" width=600 class="center">
-
+<p align="center">
+<img src="/Figures/realMultiPosterior.png" width=600>
+</p>
 
 Using this posterior we can simulate different scenarios, and easily
 carry a Bayesian credible interval with us. First we explore different
 detection procedures, were we try and find the best possible grouping
 when deciding on sentinel node groups. We plot the probability of
 detection mean and 95% CI for each node selection group against time.
-<img src="/Figures/detection.png" width=600 class="center">
-
+<p align="center">
+<img src="/Figures/detection.png" width=600>
+</p>
 Latter we study some intervention procedures, and see how the
 population prevalence decay with time. Here we also plot the mean and
 95% CI for the different techniques considered.
-<img src="/Figures/intervention.png" width=600 class="center">
-
+<p align="center">
+<img src="/Figures/intervention.png" width=600>
+</p>
 
 
 ### Structure
