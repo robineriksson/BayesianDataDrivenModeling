@@ -2,6 +2,7 @@
 ### See the paper:
 Bayesian epidemiological modeling over high-resolution network data: opportunities for optimized control.
 
+
 ## The release code version
 
 ### About
@@ -19,6 +20,16 @@ which can be called from scripts and it connects the three main parts
 of the inference: a) the simulator, b) the summary statistics, and c)
 the Bayesian sampler (estimator).
 
+### The results
+We are able to with the code and data in this repository to first
+approximate the posterior of the STEC endemic in the cattle population
+
+![Visualization of the modeling problem](https://github.com/robineriksson/BayesianDataDrivenModeling/Figures/introSingle.png)
+![Approximated posterior distribution](https://github.com/robineriksson/BayesianDataDrivenModeling/Figures/realMultiPosterior.png)
+![Bayesian modeling of detection experiments](https://github.com/robineriksson/BayesianDataDrivenModeling/Figures/detection.png)
+![Bayesian modeling of intervention experiments](https://github.com/robineriksson/BayesianDataDrivenModeling/Figures/intervention.png)
+
+
 ### Structure
 The catalog structure follows,
 
@@ -33,6 +44,7 @@ The catalog structure follows,
   - SimInfInference
     - R
     - src
+  - Figures
 
 #### Scripts
 All the scripts used for the computations, using the class from SimInfInference.
@@ -63,7 +75,7 @@ First install the SimInfInference package by in folder running `make rcpp` follo
 
 The inference for each dataset is perfomed by using the assigned script.
 If one wish to extract the multi-set matrix plots, or tables, one also need
-to save each file. The suggested location is /Scripts/DATA/posterior/. 
+to save each file. The suggested location is /Scripts/DATA/posterior/.
 In said directory, the results presented in the paper is stored and available to explore.
 
 To further replicate our results, we suggest using a computational cluster, and
