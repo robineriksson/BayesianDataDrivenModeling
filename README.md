@@ -24,10 +24,31 @@ the Bayesian sampler (estimator).
 We are able to with the code and data in this repository to first
 approximate the posterior of the STEC endemic in the cattle population
 
-![Visualization of the modeling problem](/Figures/introSingle.png)
-![Approximated posterior distribution](/Figures/realMultiPosterior.png)
+If we visually define our problem, we have a (a) local $\text{SIS}_E$
+spread of the infection withing herds. The herds are (b) connected via
+a a national transport network with other herds. In the timeframe of
+bacterial sampling, the herds are (c) sampled for the bacteria were 1
+indicates that the herd was found infected while 0 is a negative
+result.  ![Visualization of the modeling problem](/Figures/introSingle.png)
+
+On the network, we have observational data, and using SLAM (an
+approximate Bayesian computation) approach to approximate the
+parameter posterior (green). We then later affirm the found posterior
+by re-iterating the same procedure with synthetic data generated from
+the parameter posterior mean (blue & orange)
+![Approximatedposteriordistribution](/Figures/realMultiPosterior.png)
+
+Using this posterior we can simulate different scenarios, and easily
+carry a Bayesian credible interval with us. First we explore different
+detection procedures, were we try and find the best possible grouping
+when deciding on sentinel node groups. We plot the probability of
+detection mean and 95% CI for each node selection group against time.
 ![Bayesian modeling of detection experiments](/Figures/detection.png)
-![Bayesian modeling of intervention experiments](/Figures/intervention.png)
+
+Latter we study some intervention procedures, and see how the
+population prevalence decay with time. Here we also plot the mean and
+95% CI for the different techniques considered.  ![Bayesian modeling
+of intervention experiments](/Figures/intervention.png)
 
 
 ### Structure
