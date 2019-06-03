@@ -20,7 +20,7 @@ which can be called from scripts and it connects the three main parts
 of the inference: a) the simulator, b) the summary statistics, and c)
 the Bayesian sampler (estimator).
 
-### The results
+### A summary of the quantitative result
 We are able to with the code and data in this repository to first
 approximate the posterior of the STEC endemic in the cattle population
 
