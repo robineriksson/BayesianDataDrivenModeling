@@ -129,7 +129,7 @@ Metropolis algorithm. Bernoulli 7(2):223–242.
 package for data-driven stochastic disease spread
 simulations. Accepted for publication in J. Stat. Softw.
 
-* The work is influensed and succeeds the series of previously published works
+* The work is influenced and succeeds the series of previously published works
 
 [5] Bauer P, Engblom S, Widgren S (2016) Fast event-based
 epidemiological simulations on national scales. Int. J. High
