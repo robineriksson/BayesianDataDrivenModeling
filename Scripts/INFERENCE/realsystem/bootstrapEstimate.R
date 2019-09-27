@@ -12,7 +12,7 @@ generateBootstrap <- function(nStop = 14000, Mboot = 10) {
 		sboot_bin <- bootSLreal(nStop, seed = s)
 		boots[[length(boots)+1]] <- sboot_bin
 	}
-	
+
 	## estimate the bias using the list of runs.
 	b = estBias(boots, Mboot, 1000, 120)
 	return(b)
@@ -43,12 +43,12 @@ bootSLreal <- function(nStop = 100, nSim = 10,
                        debug = FALSE, solver = "ssm",
                        binary = TRUE,
                        normalize = TRUE,
-                       thetaTrue = c(upsilon = 0.01497481,
-                   					 beta_t1 = 0.13989299,
-                   					 beta_t2 = 0.13207170,
-                   					 beta_t3 = 0.15109628,
-                   					 gamma = 0.09418470,
-                   					 prev = 0.02608765),
+                       thetaTrue = c(upsilon = 0.01518903,
+                                      beta_t1 = 0.14057693,
+                                      beta_t2 = 0.12646374,
+                                      beta_t3 = 0.15532180,
+                                      gamma = 0.09650432,
+                                      prev = 0.02471147),
                        threads = NULL,
                        bs = TRUE, seed = 0,
                        logParam = FALSE, useW = TRUE,
@@ -143,7 +143,7 @@ bootSLreal <- function(nStop = 100, nSim = 10,
         B <- nSim*20
     fun = sum
     extraArgsSummaryStatistics <- list(column = "sample", fun = fun, qtr = TRUE,  bs = bs,
-                                       B = B, useW = useW, logical = FALSE)
+                                       B = B, useW = useW, logical = FALSE, fftcoeff = c(2,7))
 
     ## The Proposal When only estimating upsilon.
     Proposal <- NULL
@@ -221,25 +221,25 @@ contInference <- function(infe, nStop = 100){
 ##' @param burnin what burnin to use for the Markov Chain
 ##' @param thinning what thinning to use for the Markov Chain
 estBias <- function(infe.list, B = 10, burnin = 1000, thinning = 100) {
-	thetaTrue <- c(upsilon = 0.01497481,
-                   beta_t1 = 0.13989299,
-                   beta_t2 = 0.13207170,
-                   beta_t3 = 0.15109628,
-                   gamma = 0.09418470,
-                   prev = 0.02608765)
+    thetaTrue <- c(upsilon = 0.01518903,
+                   beta_t1 = 0.14057693,
+                   beta_t2 = 0.12646374,
+                   beta_t3 = 0.15532180,
+                   gamma = 0.09650432,
+                   prev = 0.02471147)
 
-	sboot_bin <- infe.list[[1]]
+    sboot_bin <- infe.list[[1]]
     s <- as.matrix(sboot_bin$getPosterior())
     sdim <- dim(s)
     s <- s[seq(burnin, sdim[1], thinning),]
 
     thetaVec <- array(0, dim = c(dim(s), B))
     thetaVec[,,1] <- s
-	
+
 	## error check.
 	if(B > length(infe.list)
 		B <- length(infe.list)
-	
+
 	## loop for clarity.
     for (seed in 2:B) {
 		sboot_bin <- infe.list[[seed]]
