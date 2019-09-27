@@ -68,9 +68,6 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
         tspan0[which(realDates == tinObs[1])]
 
     tspan <- tspan0[-which(realDates > tail(tinObs,1))]
-    ## old
-    ##tObs <- seq(182+obsspan, 3287, obsspan) ## what nodes we observe
-    ##
 
 
     ## load d (distance between the observed nodes)
@@ -98,8 +95,10 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     u0 <- NULL
 
 
-    ##phiLevel <- 0.05
+    ## initial phi level
     phiLevel <- "local"
+
+    ## initial prevalence level
     if("prev" %in% names(thetaTrue))
         prevLevel = NULL
     else
@@ -119,12 +118,10 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
         B <- nSim*20
     fun = sum
     extraArgsSummaryStatistics <- list(column = column, fun = fun, qtr = TRUE, bs = bs, B = B,
-                                       useW = useW, logical = logical)
+                                       useW = useW, logical = logical,
+                                       fftcoeff = c(2,7))
 
-    ## The Proposal When only estimating upsilon.  S = 0.01 ->
-    ## acceptance: ~0.31% S = 0.1, rho = 0.75, rhoBeta = 0.75 -> 5-11%
-    ## S = 0.1, -> acceptance: ~ 0-28% S = 0.01 -> acceptance: ~ 40% S
-    ## = 0.001 -> acceptance: ~ 22-93%
+    ## Proposal function, adaptive give NULL
     Proposal <- NULL
     extraArgsProposal <- NULL
 
@@ -169,8 +166,6 @@ SLAMInference <- function(nStop = 1e3, nSim = 20,
     infe$runEstimation()
 
 
-    ##parallel::stopCluster(cl)
-
     return(infe)
 }
 
@@ -188,10 +183,7 @@ contInference <- function(infe, nStop = 100){
 
     infe$changeExtraArgsEstimator(nStop = nStop, accVec = accVec, reinit = TRUE)
 
-
-
     infe$runEstimation()
-
 
     return(infe)
 }

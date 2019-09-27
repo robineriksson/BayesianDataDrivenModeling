@@ -39,10 +39,7 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
         S <- Sw
     if(is.null(e))
         e <- S/100
-    ## S = 1e-3 -> 20% accrate for inc. prev.
-    ## e = 0.5
-    ## S = 5e-5 -> 3.56%
-    ## S = 5e-4 -> 1.4% or 2.2% acc.rate
+
     set.seed(seed) ## set up simulator
 
 
@@ -83,8 +80,11 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
     u0 <- NULL
 
     ## loads variable: model
-    ##phiLevel <- 0.05
+
+    ## How to compute the inital phi level
     phiLevel <- "local"
+
+    ## intial prevalence level.
     if("prev" %in% names(thetaTrue))
         prevLevel = NULL
     else
@@ -103,8 +103,10 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
         B <- nSim*20
     fun = sum
     extraArgsSummaryStatistics <- list(column = "sample", fun = fun, qtr = TRUE,  bs = bs,
-                                       B = B, useW = useW, logical = FALSE)
+                                       B = B, useW = useW, logical = FALSE,
+                                       fftcoeff = c(2,7))
 
+    ## Proposal function, adaptive give NULL
     Proposal <- NULL
     extraArgsProposal <- NULL
 
@@ -143,9 +145,6 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
     ## explore the posterior!
     infe$runEstimation()
 
-    ##parallel::stopCluster(cl)
-
-
     return(infe)
 }
 
@@ -156,9 +155,6 @@ SLAMInference <- function(nStop = 1e3, nSim = 10,
 ##' @param theta a proposed theta0
 ##' @return inference class
 contInference <- function(infe, nStop = 100){
-
-    ## infe <- reinitCluster(infe)
-
     accVec <- as.matrix(infe$getPosterior())
     d <- dim(accVec)
     if(infe$getExtraArgsEstimator()$logParam)
