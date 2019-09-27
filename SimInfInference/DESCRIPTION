@@ -30,4 +30,5 @@ Imports:
              ggplot2,
              zoo,
              Rcpp,
-             Weighted.Desc.Stat
+             Weighted.Desc.Stat,
+             emdbook

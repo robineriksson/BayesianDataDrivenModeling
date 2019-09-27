@@ -222,11 +222,18 @@ wilkinsonStatistics <- function(vec, w = NULL){
             ms <- halfyearMean(vec)
             SS <- c(SS,ms)
 
+
+            ## Good for Upsilon
             ## fft statistics
             w <- rep(1,length(vec))/length(vec)
-            fs <- fftStatistics(vec,w)
-            SS <- c(SS,fs)
+            if("fftcoeff" %in% names(extra)) {
+                fftcoef <- extra$fftcoef
+                fs <- fftAbs(vec,w,fftcoef)
+                SS <- c(SS,fs)
+            }
 
+            ##ac23 <- acf(vec, lag.max = 2, plot = FALSE)$acf[c(2,3)]
+            ##SS <-  c(ac23, mean(vec), log(var(vec) + 1))
         } else {
             SS <- c()
 
@@ -234,10 +241,16 @@ wilkinsonStatistics <- function(vec, w = NULL){
             qs <- qtrStatistics(vec,w)
             SS <- c(SS,qs)
 
+            ## Good for Upsilon
             ## fft statistics
-            fs <- fftStatistics(vec,w,2)
-            SS <- c(SS,fs)
+            w <- rep(1,length(vec))/length(vec)
+            if("fftcoeff" %in% names(extra)) {
+                fftcoef <- extra$fftcoef
+                fs <- fftAbs(vec,w,fftcoef)
+                SS <- c(SS,fs)
+            }
         }
+
     }
     return(SS)
 }
@@ -275,26 +288,29 @@ halfyearMean <- function(vec){
 ##' @param w the weights
 ##' @param numCoef the number of coefficients to save.
 ##' @export
-fftStatistics <- function(vec,w,numCoef=2) {
+fftAbs <- function(vec,w,numCoef=c(4,5)) {
     ## Weight the data
     y <- vec*w
 
     ## transform the data
     y.fft <- fft(y)
 
+    z <- abs(y.fft)[numCoef]
+
     ## find the numCoef largest coefficients (amplitudes)
-    ampl.uni <- unique(abs(y.fft))
-    ampl.ord <- order(ampl.uni,decreasing=TRUE)
-    ampl.larg <- ampl.uni[ampl.ord[1:numCoef]]
+    ## ampl.uni <- unique(abs(y.fft))
+    ## ampl.ord <- order(ampl.uni,decreasing=TRUE)
+    ## ampl.larg <- ampl.uni[ampl.ord[1:numCoef]]
 
     ## name the output
-    name <- character(numCoef)
-    for (i in 1:numCoef)
-        name[i] <- paste("fft", i, sep="")
+    name <- as.character(numCoef)
+    for (i in 1:length(numCoef))
+        name[i] <- paste("fft_coef", numCoef[i], sep="")
 
-    names(ampl.larg) <- name
-
-    return(ampl.larg)
+    ##names(ampl.larg) <- name
+    names(z) <- name
+    ##return(ampl.larg)
+    return(z)
 }
 
 ##' Compute mean and variance (weighted)
