@@ -1,9 +1,5 @@
 ## Robin Eriksson
-library(SimInf)
 library(SimInfInference)
-
-library(ggplot2)
-
 
 
 ##' main function, that employs all subfunctions
@@ -124,11 +120,14 @@ runSimulator <- function(N, filename, dataDir, by = 100) {
     set.seed(0)
 
     ## load posterior
-    load(filename)
-    posterior.All <- sobs$getPosterior()
+    load(filename) # loads mobs
+    posterior.All <- mobs$getPosterior()
     dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],by)
+    ## this assumes that we have the 45 000 large dataset.
+    rows <- seq(1,dims[1],10)
     cols <- seq_len(dims[2]-1)
+    posterior.thinned <- posterior.All[rows,cols]
+
 
     posterior.thinned <- posterior.All[rows,cols]
 

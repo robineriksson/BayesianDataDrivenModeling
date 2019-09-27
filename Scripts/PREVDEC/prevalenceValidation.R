@@ -12,11 +12,11 @@ library(ggplot2)
 ##' @param extend how many days to relax the mathc with.
 ##' @param PosteriorFilePath the filepath to the computed posterior.
 ##' @param dataDir the path to the directory holding the data
-main <- function(N = 100, nodes = 500, CI = 2, extend = 1,
+main <- function(N = 100, nodes = 250, CI = 2, extend = 1,
                  PosteriorFilePath, dataDir) {
     r <- runSimulation(nodes = nodes, N = N, extend = extend,
                        filename = PosteriorFilePath, dataDir = dataDir)
-                       
+
     qq <- apply(prev, 2, function(x){findQuantile(x,0.05)})
     prev <- r$prev
     means <- apply(prev, 2, mean)
@@ -50,7 +50,7 @@ findQuantile <- function(x,alpha = 0.05) {
 loadPosterior <- function(filename, N, by = 100) {
     ## load posterior
     load(filename)
-    posterior.All <- sobs$getPosterior()
+    posterior.All <- mobs$getPosterior()
     dims <- dim(posterior.All)
     rows <- seq(1,dims[1],by)
     cols <- seq_len(dims[2]-1)
@@ -446,7 +446,7 @@ plotit <- function(res, size = 14) {
     return(p)
 }
 
-##' Code that runs and check the node prevalence for the 126 
+##' Code that runs and check the node prevalence for the 126
 ##' herds and checks the node prevalence for simulation and observation.
 ##' @param runs the number of iterations to use for the "posterior"
 ##' @param filename name of the posterior file

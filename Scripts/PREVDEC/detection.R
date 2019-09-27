@@ -21,7 +21,7 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
     ## % sample N = 100 parameters
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Draw posterior")
-    theta.post <- drawPosterior(N, PosteriorFilePath, dataDir)
+    theta.post <- drawPosterior(N, PosteriorFilePath)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -71,12 +71,12 @@ main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
 ##' @param N number of draws
 drawPosterior <- function(N, filename, by = 100) {
     ## load posterior
-    load(filename)
-    posterior.All <- sobs$getPosterior()
+    load(filename) # loads mobs
+    posterior.All <- mobs$getPosterior()
     dims <- dim(posterior.All)
-    rows <- seq(1,dims[1],by)
+    ## this assumes that we have the 45 000 large dataset.
+    rows <- seq(1,dims[1],10)
     cols <- seq_len(dims[2]-1)
-
     posterior.thinned <- posterior.All[rows,cols]
 
     ## if we do 100 draws and do not use replace, then we're using all the accepted parameter pairs
@@ -132,14 +132,6 @@ runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL, data
                                     phi = "local")
 
         res <- SimInf::run(model, threads = NULL, solver = "ssm")
-
-        ## ## extract final state, to be used as
-        ## u <- SimInf::trajectory(res, c("S","I"), as.is = TRUE)
-        ## size <- dim(u)
-        ## u0.m <- matrix(u[,size[2]], nrow = 2)
-        ## rownames(u0.m) <- c("S","I")
-
-
 
         v <- SimInf::trajectory(res, c("phi"), node = rows, as.is = TRUE)
         v.m <- matrix(v[,which(as.numeric(colnames(v)) %in% cols)], ncol = ncol)
@@ -418,7 +410,7 @@ findQuantile <- function(x,alpha = 0.05) {
 ##' 1-prod_{node i in set} (1-P_i(t)), P_i(t) = sigmoid(phi) or
 ##' sigmoid(P),
 ##' @param p matrix for node set
-detectionProb <- function(run, nodeSelection, rankP = FALSE, 
+detectionProb <- function(run, nodeSelection, rankP = FALSE,
 			na.rm = FALSE, cutLevel = 1, numSD = 1, alt1 = TRUE,
 			useQuantile = TRUE, alpha = 0.05) {
     if(rankP)
