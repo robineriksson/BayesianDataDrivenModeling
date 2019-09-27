@@ -42,6 +42,14 @@ the parameter posterior mean (blue & orange)
 <img src="/Figures/realMultiPosterior.png" width=600>
 </p>
 
+To judge the posterior, we can run 250 sampled trajectories and
+compare the number of positive samples per quarter. Blue triangles are
+the observations, solid black line is the mean of the trajetories and
+the shaded grey area is the 95% CI.
+<p align="center">
+<img src="/Figures/posteriorfit.png"
+width=600> </p>
+
 Using this posterior we can simulate different scenarios, and easily
 carry a Bayesian credible interval with us. First we explore different
 detection procedures, were we try and find the best possible grouping
