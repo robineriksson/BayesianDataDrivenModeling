@@ -45,7 +45,10 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
     events <- SimInf::events_SISe()
     u0 <- SimInf::u0_SISe()
 
+    ## How to compute the initial phi level
     phiLevel <- "local"
+
+    ## the initial prevalence level
     if("prev" %in% names(thetaTrue))
         prevLevel <- NULL
     else
@@ -62,7 +65,8 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
     SummaryStatistics <- aggWilkinson
     extraArgsSummaryStatistics <- list(column = column, fun = mean,
                                         qtr = FALSE, bs = FALSE, B = NULL,
-                                        useW = FALSE, logical = logical)
+                                       useW = FALSE, logical = logical,
+                                       fftcoeff = c(4,5))
 
     ## The Proposal
     ## When only estimating upsilon.
@@ -71,7 +75,7 @@ ABCInference <- function(nStop = 100, epsilon = 0.1,
 
 
     ## The Estimator
-    Estimator <- ABC##_pkg
+    Estimator <- ABC
 
     ## make observation
     extraArgsEstimator <- list(parameters = names(thetaTrue),
@@ -114,22 +118,7 @@ contInference <- function(infe, nStop = 100){
 
     infe$changeExtraArgsEstimator(nStop = nStop, accVec = accVec)
 
-    if(infe$getExtraArgsSimulator()$binary){
-        ##for parallell sampling
-        cNum <- parallel::detectCores()
-        cl <- parallel::makeCluster(getOption("cl.cores", cNum))
-        parallel::clusterExport(cl=cl,
-                                varlist=c("sample_herd",
-                                          "predict_env_sample_SISe",
-                                          "pool_prevalence",
-                                          "sample_pools"))
-        infe$changeExtraArgsSimulator(cl = cl)
-    }
-
     infe$runEstimation()
-
-    if(infe$getExtraArgsSimulator()$binary)
-        parallel::stopCluster(cl)
 
     return(infe)
 }

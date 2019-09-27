@@ -58,8 +58,10 @@ SLAMInference <- function(nStop = 100, nSim = 10,
     events <- SimInf::events_SISe()
     u0 <- SimInf::u0_SISe()
 
-    ##phiLevel = 0.5
+    ## how to compute the starting phi level.
     phiLevel <- "local"
+
+    ## If prev is not included as a parameter, set the initial value
     if("prev" %in% names(thetaTrue))
         prevLevel <- NULL
     else
@@ -76,7 +78,8 @@ SLAMInference <- function(nStop = 100, nSim = 10,
     fun = sum
     extraArgsSummaryStatistics <- list(column = column, fun = fun,
                                        qtr = FALSE, bs = bs, B = B,
-                                       useW = FALSE, logical = logical)
+                                       useW = FALSE, logical = logical,
+                                       fftcoeff = c(4,5))
 
     ## The Proposal When only estimating upsilon.
     Proposal <- NULL
@@ -191,7 +194,7 @@ pertubationSL <- function(thetalength = 21,
     events <- SimInf::events_SISe()
     u0 <- SimInf::u0_SISe()
 
-    ##phiLevel = 0.5
+    ## initial values
     phiLevel <- "local"
     prevLevel <- 0.1
 
