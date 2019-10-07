@@ -68,8 +68,9 @@ plotit <- function(output, obs.y, textsize = 10) {
     ## add publication theme
     g <- g + theme_Publication(textsize) +
         theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-              legend.position = "top",
-              text = ggplot2::element_text((family="LM Roman 10"))) +
+              ## uncomment for font family as in article
+              ##text = ggplot2::element_text((family="LM Roman 10"))m
+              legend.position = "top") +
         scale_color_manual(values=c("grey80", "black", "cornflowerblue"))
 
     return(g)
