@@ -9,19 +9,21 @@ library(ggplot2)
 ##' @param toSave save the output plot
 ##' @param PosteriorFilePath the directory that holds the posterior
 ##' @param dataDir path to data directory
-main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath, dataDir) {
+main <- function(N = 100, M = 10, rankP = FALSE, PosteriorFilePath = "/posterior/real/mis_obs.rda",
+                 dataDir = "../DATA") {
     set.seed(0)
 
     ## perform node network check here so that we get the same random
     ## nodes each time.
-    networkNodes <- networkEval(M, dataDir)
+    networkNodes <- networkEval(M, dataDir=dataDir)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## % sample N = 100 parameters
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     print("Draw posterior")
-    theta.post <- drawPosterior(N, PosteriorFilePath)
+    filename <- paste(dataDir, PosteriorFilePath, sep="")
+    theta.post <- drawPosterior(N, filename)
 
 
     ## %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -92,7 +94,7 @@ drawPosterior <- function(N, filename, by = 100) {
 ##' @param dataDir the path to the directory that holds the data
 runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL, dataDir) {
     ## define tspan vector
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    sise_path <- paste(dataDir, "/VTEC/SISe.rda", sep = "")
     load(sise_path) ## load model
     tspan <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
@@ -124,7 +126,7 @@ runSimulation <- function(init = TRUE, N, theta.post, nodeSelection = NULL, data
         theta <- setTheta(t)
 
         ## reload model
-        load(sise_smhi_path)
+        load(sise_path)
 
         ## initialize model
         model <- init_model_widgren(model = model, theta = theta,
@@ -190,8 +192,9 @@ rankNodes <- function(run, M = 10, rankP = FALSE, na.rm = FALSE) {
 ##' Evaluate the network trafic for possible candidates
 ##' @param M number of selected nodes
 ##' @param dataDir the path to the drectory that holds the data
-networkEval <- function(M = 10, includeEEevents = TRUE) {
-    load("~/Gits/BPD/R/DATA/secret2/SISe.rda") ## loads: model <- with SMHI
+networkEval <- function(M = 10, includeEEevents = TRUE, dataDir) {
+    sise_path <- paste(dataDir, "/VTEC/SISe.rda", sep = "")
+    load(sise_path) ## loads: model <- with SMHI
     events <- model@events
 
 

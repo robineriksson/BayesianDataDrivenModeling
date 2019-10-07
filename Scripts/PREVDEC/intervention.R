@@ -1,114 +1,5 @@
-## Robin Eriksson
+#quan# Robin Eriksson
 library(SimInfInference)
-
-
-##' main function, that employs all subfunctions
-##'
-##' @param N the number of posterior samples
-##' @param savePlot save the output plot
-##' @param PosteriorFilePath filepath to the posterior.
-##' @param dataDir path to data directory
-##' @return list with dataframe and plot handle
-main <- function(N, PosteriorFilePath, dataDir) {
-    res <- runSimulator(N, PosteriorFilePath, dataDir)
-    ## create more informative names for each intervention
-    oldnames <- names(res)
-    newnames <- numeric(length(oldnames))
-    for(n in seq_len(length(oldnames))) {
-        if(oldnames[n] == "baseline")
-            newnames[n] <- "No intervention"
-        else if(oldnames[n] == "transrate")
-            newnames[n] <- "10% reduced indirect transmission rate"
-        else if(oldnames[n] == "decayrate")
-            newnames[n] <- "10% increased bacterial decay rate"
-        else if(oldnames[n] == "noInfectTransp")
-            newnames[n] <- "No transmission by transport"
-        else
-            newnames[n] <- oldnames[n]
-    }
-    names(res) <- newnames
-
-    ## create data frame of each N simulations.
-    prev <- lapply(res,prevSimulator)
-
-    ## extract values post 2008
-    prev.2008 <- lapply(prev, post2008)
-
-    ## thin out the data
-    prev.2008t <- lapply(prev.2008, postThin)
-
-    ## create a ribbon, with 95% CI
-    ribbon <- do.call("rbind", lapply(prev.2008t, function(X){
-    				postRibbon(X,useQuantile=TRUE,alpha=0.05)
-    				}))
-    ## drop rownames
-    rownames(ribbon) <- c()
-
-    ## add "factor name"
-    resnames <- names(res)
-    internames <- numeric(length(resnames))
-    for(i in seq_len(length(resnames))) {
-        internames[i] <- paste(i,") ", resnames[i], sep = "")
-    }
-    ribbon$name <- rep(internames, each = dim(ribbon)[1]/length(resnames))
-    p <- plotSimulator(ribbon)
-
-    return(list(fulldata = prev, ribbon = ribbon, p = p))
-}
-
-##' Perform the statistical test.
-##' Are there any difference in the prevention methods?
-##'
-##' @param prev the full data produced by the main function
-##' @param ribbon the ribbon produced by the main function.
-statTest <- function(prev, logit = TRUE, B = 1000) {
-    ## in order not to recompute every time
-    ncols <- length(prev)
-
-    ## prepare the data
-    prev.2008 <- lapply(prev, post2008)
-    prev.2008t <- lapply(prev.2008, postThin)
-    data <- do.call("rbind",prev.2008t)
-
-    ## get max time
-    mtime <- max(data$time)
-
-    ## extract the max time data
-    maxdata <- t(data[which(data$time == mtime),])
-    maxdata <- matrix(as.numeric(maxdata[-1,]), ncol = ncols)
-
-    ## logit?
-    if(logit) {
-        maxdata <- log(maxdata)
-    }
-
-    ## Do we have normality?
-    swVal <- c()
-
-    ## plot histograms with fitted normal curve
-    par(mfrow = c(ceiling(ncols/2),2))
-    for(i in seq_len(ncols)) {
-        if(B > 0) {
-            ## non parametric bootstrap
-            xx <- sample(maxdata[,i], size = B, replace = T)
-        } else
-            xx <-  maxdata[,i]
-
-        swVal <- c(swVal,shapiro.test(xx)$p.value)
-
-        hist(xx, freq = F)
-        ## think they are in the same order.
-        curve(dnorm(x, mean = mean(xx), sd = sd(xx)), col = 1+i, add =T)
-    }
-
-    ## perform normality test
-    #swVal <- apply(maxdata, 2, function(x){shapiro.test(x)$p.value})
-
-    alpha <- 0.05
-    swTest <- swVal > alpha
-    return(swTest)
-}
-
 
 ##' run N simulations with N drawn posterior parameter samples.
 ##'
@@ -120,7 +11,8 @@ runSimulator <- function(N, filename, dataDir, by = 100) {
     set.seed(0)
 
     ## load posterior
-    load(filename) # loads mobs
+    postFile = paste(dataDir, filename, sep="")
+    load(postFile) # loads mobs
     posterior.All <- mobs$getPosterior()
     dims <- dim(posterior.All)
     ## this assumes that we have the 45 000 large dataset.
@@ -136,7 +28,7 @@ runSimulator <- function(N, filename, dataDir, by = 100) {
 
 
     ## define tspan vector
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    sise_path <- paste(dataDir, "/VTEC/SISe.rda", sep = "")
     load(sise_path) ## load model# load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
@@ -555,82 +447,57 @@ plotSimulator <- function(df, publish = FALSE, numSD = 2, useQuantile=TRUE) {
 }
 
 
-
-
-##' Perform the statistical test.
-##' Are there any difference in the prevention methods?
+##' main function, that employs all subfunctions
 ##'
-##' @param prev the full data produced by the main function
-intCompare <- function(mainoutput) {
-    prev <- mainoutput$fulldata
-    ## in order not to recompute every time
-    ncols <- length(prev)
+##' @param N the number of posterior samples
+##' @param savePlot save the output plot
+##' @param PosteriorFilePath filepath to the posterior.
+##' @param dataDir path to data directory
+##' @return list with dataframe and plot handle
+main <- function(N, PosteriorFilePath = "/posterior/real/mis_obs.rda",
+                 dataDir = "../DATA") {
+    res <- runSimulator(N, PosteriorFilePath, dataDir)
+    ## create more informative names for each intervention
+    oldnames <- names(res)
+    newnames <- numeric(length(oldnames))
+    for(n in seq_len(length(oldnames))) {
+        if(oldnames[n] == "baseline")
+            newnames[n] <- "No intervention"
+        else if(oldnames[n] == "transrate")
+            newnames[n] <- "10% reduced indirect transmission rate"
+        else if(oldnames[n] == "decayrate")
+            newnames[n] <- "10% increased bacterial decay rate"
+        else if(oldnames[n] == "noInfectTransp")
+            newnames[n] <- "No transmission by transport"
+        else
+            newnames[n] <- oldnames[n]
+    }
+    names(res) <- newnames
 
-    ## prepare the data
+    ## create data frame of each N simulations.
+    prev <- lapply(res,prevSimulator)
+
+    ## extract values post 2008
     prev.2008 <- lapply(prev, post2008)
-    ##prev.2008t <- lapply(prev.2008, postThin)
-    ##data <- do.call("rbind",prev.2008t)
-    data <- do.call("rbind",prev.2008)
 
-    ## get two comparative year slots
-    t1 <- "2010-01-01"
-    t2 <- "2012-01-01"
+    ## thin out the data
+    prev.2008t <- lapply(prev.2008, postThin)
 
+    ## create a ribbon, with 95% CI
+    ribbon <- do.call("rbind", lapply(prev.2008t, function(X){
+    				postRibbon(X,useQuantile=TRUE,alpha=0.05)
+    				}))
+    ## drop rownames
+    rownames(ribbon) <- c()
 
-    t1data <- t(data[which(data$time == t1),])
-    t1matrix <- matrix(as.numeric(t1data[-1,]), ncol = ncols)
-    t1matrix <- sweep(t1matrix,1,t1matrix[,1],"/")
+    ## add "factor name"
+    resnames <- names(res)
+    internames <- numeric(length(resnames))
+    for(i in seq_len(length(resnames))) {
+        internames[i] <- paste(i,") ", resnames[i], sep = "")
+    }
+    ribbon$name <- rep(internames, each = dim(ribbon)[1]/length(resnames))
+    p <- plotSimulator(ribbon)
 
-    mean1 <- apply(t1matrix,2,mean)
-    sd1 <- apply(t1matrix,2,mean)
-    tf1data <- data.frame(t1matrix, as.character(rep("Year 1", dim(t1matrix)[1])))
-    names(tf1data) <- c(names(prev),"time")
-
-
-    t2data <- t(data[which(data$time == t2),])
-    t2matrix <- matrix(as.numeric(t2data[-1,]), ncol = ncols)
-    t2matrix <- sweep(t2matrix,1,t2matrix[,1],"/")
-    tf2data <- data.frame(t2matrix, as.character(rep("Year 3", dim(t2matrix)[1])))
-
-    names(tf2data) <- c(names(prev),"time")
-
-
-
-
-    tfdata <- data.frame(rbind(tf1data,tf2data))
-    names(tfdata) <- c("(1)","(2)","(3)","(4)","time")
-    ##names(tfdata) <- c(unique(mainoutput$ribbon$name),"time")
-
-    means1 <- apply(tfdata[tfdata$time == "Year 1", 2:4], 2, mean)
-    sd1 <- apply(tfdata[tfdata$time == "Year 1", 2:4], 2, sd)
-
-    means2 <- apply(tfdata[tfdata$time == "Year 3", 2:4], 2, mean)
-    sd2 <- apply(tfdata[tfdata$time == "Year 3", 2:4], 2, sd)
-
-    sumData <- data.frame(means1, sd1, means2, sd2)
-    rownames(sumData) <- names(tfdata)[2:4]
-
-    tfdata <- tfdata[,-1]
-    tfdata.melt <- reshape::melt(tfdata, id.var = c("time"))
-
-
-    ## boxplot(tfdata[tfdata$time == 2, 1:ncols],col= scales::alpha("red", 0.5), las = 2)
-    ## boxplot(tfdata[tfdata$time == 1, 1:ncols],col= scales::alpha("blue", 0.5), add = T, las = 2)
-
-    p <- ggplot2::ggplot(tfdata.melt, ggplot2::aes(x = variable, y = value, color = time)) +
-        ggplot2::geom_boxplot(lwd = 0.1, outlier.size=NA, fatten = 0.5) + #coord_flip() +
-        theme_Publication(6) +
-        ggplot2::labs(x = "Intervention method", y = "Reduction factor", color = "time") +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5),
-                       legend.position = c(0.85,0.8),
-                       legend.direction = "vertical",
-                       ##legend.key.size= grid::unit(0.1, "cm"),
-                       legend.background = element_rect(colour='grey'),
-                       panel.grid.major.x = element_blank()) +
-        ##scale_y_continuous(position = "right") +
-        scale_color_manual(values = c("#00B283","#FF3B00")) +
-    guides(color=ggplot2::guide_legend(title.vjust = -1, title = NULL, label.vjust = 2, key.vjust = 2))
-
-    return(list(p = p, sumData = sumData))
-
+    return(list(fulldata = prev, ribbon = ribbon, p = p))
 }
