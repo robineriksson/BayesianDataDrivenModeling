@@ -13,12 +13,13 @@ library(ggplot2)
 ##' @param PosteriorFilePath the filepath to the computed posterior.
 ##' @param dataDir the path to the directory holding the data
 main <- function(N = 100, nodes = 250, CI = 2, extend = 1,
-                 PosteriorFilePath, dataDir) {
+                 PosteriorFilePath = "/posterior/real/mis_obs.rda",
+                 dataDir = "../DATA") {
     r <- runSimulation(nodes = nodes, N = N, extend = extend,
                        filename = PosteriorFilePath, dataDir = dataDir)
 
-    qq <- apply(prev, 2, function(x){findQuantile(x,0.05)})
     prev <- r$prev
+    qq <- apply(prev, 2, function(x){findQuantile(x,0.05)})
     means <- apply(prev, 2, mean)
     sds <- apply(prev, 2, sd)
 
@@ -72,14 +73,14 @@ loadPosterior <- function(filename, N, by = 100) {
 ##' @param filename path to filename
 ##' @param dataDir path to data directory
 runSimulation <- function(nodes = 250, N = 100, extend = NULL,
-                          filename, dataDir {
+                          filename, dataDir) {
     set.seed(0)
 
     ## load posterior
-    theta.post <- loadPosterior(filename, N)
+    theta.post <- loadPosterior(paste(dataDir, filename, sep=""), N)
 
     ## define tspan vector
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    sise_path <- paste(dataDir, "/VTEC/SISe.rda", sep = "")
     load(sise_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
@@ -315,10 +316,10 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
     set.seed(0)
 
     ## load posterior
-    theta.post <- loadPosterior(filename, N)
+    theta.post <- loadPosterior(paste(dataDir, filename, sep=""), N)
 
     ## define tspan vector
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    sise_path <- paste(dataDir, "VTEC/SISe.rda", sep = "")
     load(sise_path) ## load model
     tspan0 <- seq(head(model@events@time,1), tail(model@events@time,1), 1)
 
@@ -359,7 +360,7 @@ trueNOPsim <- function(nodes = 250, N = 100, extend = NULL, filename, dataDir) {
     ## what nodes to sample?
     nodes.events <- sampleNodes(eventsOI.exit, nodes, extend)
     nodes.all <- NULL
-    nObs_path = paste(dataDir, "nObs.rda", sep ="")
+    nObs_path = paste(dataDir, "/VTEC/nObs.rda", sep ="")
     load(nObs_path)
     nodes.n126 <- as.numeric(nObs)
 
@@ -451,22 +452,22 @@ plotit <- function(res, size = 14) {
 ##' @param runs the number of iterations to use for the "posterior"
 ##' @param filename name of the posterior file
 ##' @param dataDir the directory holding the observation/model data.
-n126nodePrevalence <- function(runs = 1, filename, dataDir) {
+n126nodePrevalence <- function(runs = 100, filename = "/posterior/real/mis_obs.rda", dataDir = "../DATA") {
     set.seed(0)
 
     ## draw samples from the posterior
-    theta.post <- loadPosterior(filename, runs)
+    theta.post <- loadPosterior(paste(dataDir, filename, sep=""), runs)
 
   	## what nodes
-    nObs_path <- paste(dataDir, "nObs.rda", sep = "")
+    nObs_path <- paste(dataDir, "/VTEC/nObs.rda", sep = "")
     load(nObs_path) ## load: nObs
 
     ## same for all runs
-    sise_path <- paste(dataDir, "SISe.rda", sep = "")
+    sise_path <- paste(dataDir, "/VTEC/SISe.rda", sep = "")
     load(sise_path) ## load model
 
 
-	obs_path <- paste(dataDir, "obs.rda", sep = "")
+    obs_path <- paste(dataDir, "/VTEC/obs.rda", sep = "")
     load(obs_path) ## load: obs
     obs$sample <- as.numeric(obs$status)
 
