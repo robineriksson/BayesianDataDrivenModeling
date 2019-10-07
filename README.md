@@ -107,7 +107,8 @@ The code is written in two folders, R and src. Where R hold the R code
 and src the RCPP. RCPP was used for some task for easy speed-up.
 
 ## Run the code (Replicate the result)
-First install the SimInfInference package by in folder running `make rcpp` followed by `make install`
+First make sure that all dependencies are installed by runnung 'make aldepend'.
+Then install the SimInfInference package by running `make rcpp` followed by `make install`
 
 The inference for each dataset is perfomed by using the assigned script.
 If one wish to extract the multi-set matrix plots, or tables, one also need
