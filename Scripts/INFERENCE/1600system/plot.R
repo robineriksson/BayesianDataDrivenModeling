@@ -209,6 +209,7 @@ main <- function(){
     ## create the plot object
     p <- plotMultiDens(names, rows, thetaTrue, selectedParams, noellips=noellips)
 
-    p <- p + theme(text = element_text(family="LM Roman 10"))
+    ## Uncomment if you have the LM Roman font installed
+    ## p <- p + theme(text = element_text(family="LM Roman 10"))
     return(p)
 }

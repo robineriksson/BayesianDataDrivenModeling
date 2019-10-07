@@ -253,8 +253,8 @@ main <- function() {
                        includeEllips = includeEllips)
 
 
-
-    p <- p + theme(text = element_text(family="LM Roman 10"))
+    ## Uncomment if you have the LM Roman font installed
+    ## p <- p + theme(text = element_text(family="LM Roman 10"))
 
     return(p)
 }
