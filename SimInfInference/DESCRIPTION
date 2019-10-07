@@ -17,7 +17,6 @@ Imports:
              synlik,
              R6,
              SimInf,
-             parallel,
              Matrix,
              data.table,
              akima,

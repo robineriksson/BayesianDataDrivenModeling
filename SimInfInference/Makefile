@@ -20,15 +20,10 @@ rcpp:
 check:
 	cd .. && R CMD CHECK $(PKG_NAME)
 
-
-
 # Install dependencies
 alldepend:
-	Rscript -e 'install.packages(c("MASS", "abc", "synlik", "R6", "SimInf", "Matrix", "data.table", "akima", "plot3D", "lattice", "pbapply", "GGally", "ggthemes", "ggplot2", "zoo", "Rcpp", " Weighted.Desc.Stat"), repos="http://cran.rstudio.com")'
+	Rscript -e 'install.packages(c("MASS", "abc", "synlik", "R6", "SimInf", "Matrix", "data.table", "akima", "plot3D", "lattice", "pbapply", "GGally", "ggthemes", "grid", "ggplot2", "zoo", "Rcpp", " Weighted.Desc.Stat", "emdbook"), repos="http://cran.rstudio.com")'
 
-# Install bare minimum
-mindepend:
-	Rscript -e 'install.packages(c("MASS", "abc", "synlik", "R6", "SimInf", "Matrix", "data.table", "akima", "pbapply", "zoo"), repos="http://cran.rstudio.com")'
 # Build documentation with roxygen
 # 1) Remove old doc
 # 2) Generate documentation
